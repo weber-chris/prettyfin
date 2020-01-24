@@ -20,6 +20,7 @@ with open(folder_preprocessed_data / 'funkt_id_map.json', 'r') as file:
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
 
 app.layout = html.Div([
     dcc.Graph(id='graph-with-slider', style={"width": "100%", "display": "inline-block"}),
