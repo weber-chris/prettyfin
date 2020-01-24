@@ -1,0 +1,7 @@
+dash
+plotly
+pathlib
+gunicorn
+os
+json
+pandas
