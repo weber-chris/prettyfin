@@ -131,3 +131,5 @@ dmypy.json
 data/raw/
 *.xlsx
 .idea/*
+!data/preprocessed/*
+*.zip
