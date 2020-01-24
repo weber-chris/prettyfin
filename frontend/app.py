@@ -1,7 +1,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import plotly.express as px
 from pathlib import Path
 import os
@@ -42,22 +42,70 @@ app.layout = html.Div([
     dcc.Dropdown(
         id="x-axis-dropdown",
         options=[{'label': cat[1], 'value': cat[0]} for cat in funkt_id_map.items()],
-        value='0', multi=False),
+        value='0', multi=False, style={'width': '50%', 'display': 'inline-block'}),
     dcc.Dropdown(
         id="y-axis-dropdown",
         options=[{'label': cat[1], 'value': cat[0]} for cat in funkt_id_map.items()],
-        value='1', multi=False),
-    html.Button('Start', id='start-button'),
+        value='1', multi=False, style={'width': '50%', 'display': 'inline-block'}),
+    html.Button(html.P('Start', id='start-button-text'), id='start-button'),
+
+    dcc.Interval(id="interval", disabled=True, interval=1500),
+    html.P(id="output"),
 ])
+
+
+@app.callback(Output('start-button-text', 'children'), [Input("interval", "disabled")])
+def change_button_text(disabled):
+    if disabled:
+        return 'Start'
+    else:
+        return 'Stop'
+
+
+# @app.callback(Output("output", "children"), [Input("interval", "n_intervals")])
+# def display_count(n):
+#     return f"Interval has fired {n} times"
+
+
+@app.callback([Output('year-slider', 'value'), Output("interval", "disabled")],
+              [Input("interval", "n_intervals"), Input("start-button", "n_clicks")],
+              [State('year-slider', 'value'),
+               State("interval", "disabled")])
+def slide_adjust(n_intervals, n_clicks, slider_year, disabled):
+    ctx = dash.callback_context
+
+    if ctx.triggered[0]['prop_id'] == 'interval.n_intervals':
+        print('interval')
+        if disabled is not None:
+            if not disabled:
+                slider_year += 1
+            print(slider_year)
+            if slider_year > max_year:
+                return dash.no_update, True
+            else:
+                return slider_year, dash.no_update
+        else:
+            return dash.no_update, dash.no_update
+
+    if ctx.triggered[0]['prop_id'] == 'start-button.n_clicks':
+        print('button')
+        if n_clicks:
+            interval_status = not disabled
+        else:
+            return dash.no_update, dash.no_update
+
+        return dash.no_update, interval_status
 
 
 @app.callback(
     Output('graph-bubbles', 'figure'),
     [Input('x-axis-dropdown', 'value'),
      Input('y-axis-dropdown', 'value'),
-     Input('year-slider', 'value')])
+     Input('year-slider', 'value')]
+)
 def update_bubble(x_axis, y_axis, selected_year):
-    start = time.time()
+    print('update_bubble')
+
     df_filtered = df_ausgaben[df_ausgaben.year == selected_year]
     traces = []
     for canton in cantons:
@@ -69,40 +117,24 @@ def update_bubble(x_axis, y_axis, selected_year):
             mode='markers',
             opacity=0.7,
             marker={
-                'size': df_canton['population']*0.0001,
+                'size': df_canton['population'] * 0.0001,
                 'line': {'width': 0.5, 'color': 'white'}
             },
             name=canton
         ))
 
-    fig =  {
+    fig = {
         'data': traces,
         'layout': dict(
             xaxis={'title': funkt_id_map[x_axis], 'range': [df_ausgaben[x_axis].min(), df_ausgaben[x_axis].max()]},
             yaxis={'title': funkt_id_map[y_axis], 'range': [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]},
-            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-            legend={'x': 0, 'y': 1},
+            margin={'l': 60, 'b': 40, 't': 10, 'r': 20},
+            legend={'x': 1, 'y': 1},
             hovermode='closest',
             transition={'duration': 1000},
         )}
-    end = time.time()
-    print(end-start)
+
     return fig
-
-
-# @app.callback(
-#     Output('graph-with-slider', 'figure'),
-#     [Input('x-axis-dropdown', 'value'), Input('y-axis-dropdown', 'value')])
-# def update_figure(x_axis, y_axis):
-#     start = time.time()
-#     fig = px.scatter(df_ausgaben[[x_axis, y_axis,'canton']], x=x_axis, y=y_axis, animation_frame=df_ausgaben.index, animation_group="canton",
-#                      color="canton", hover_name="canton",
-#                      log_x=True, size_max=55, range_x=[0.9*df_ausgaben[x_axis].min(), 1.1*df_ausgaben[x_axis].max()],
-#                      range_y=[0.9*df_ausgaben[y_axis].min(), 1.1*df_ausgaben[y_axis].max()])
-#     # fig.update_layout(showlegend=False)
-#     end = time.time()
-#     print(end-start)
-#     return fig
 
 
 if __name__ == '__main__':
