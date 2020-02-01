@@ -32,9 +32,27 @@ cantons.sort()  # needed so that legend is alphabetical
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# because we use tabs,
+# there will be callbacks specified to elements that are not initially in
+# app.layout (if there are callbacks present in the other pages or tabs). that's why we set:
+app.config.suppress_callback_exceptions = True
 server = app.server
 
 app.layout = html.Div([
+    html.H1('Prettyfin'),
+    dcc.Tabs(id="tabs-example", value='tab-1-example', children=[
+        dcc.Tab(label='Bubble Graph', value='tab-graph'),
+        dcc.Tab(label='Line Graph', value='tab-line'),
+        dcc.Tab(label='Map', value='tab-map'),
+    ]),
+    html.Div(id='tabs-content-example')
+])
+
+@app.callback(Output('tabs-content-example', 'children'),
+              [Input('tabs-example', 'value')])
+def render_content(tab):
+    if tab == 'tab-graph':
+        return html.Div([
     # dcc.Graph(id='graph-with-slider', style={'width': '100%', 'display': 'inline-block'}),
     dcc.Graph(id='graph-bubbles', style={'width': '100%', 'height': '65vh'}),
     html.Div([
@@ -79,7 +97,34 @@ app.layout = html.Div([
 
     dcc.Interval(id='interval', disabled=True, interval=1500),
 ], style={'width': '100%'})
-
+    elif tab == 'tab-line':
+        return html.Div([
+            html.H3('Tab content 2'),
+            dcc.Graph(
+                id='graph-2-tabs',
+                figure={
+                    'data': [{
+                        'x': [1, 2, 3],
+                        'y': [5, 10, 6],
+                        'type': 'bar'
+                    }]
+                }
+            )
+        ])
+    elif tab == 'tab-map':
+        return html.Div([
+            html.H3('Tab content 2'),
+            dcc.Graph(
+                id='graph-2-tabs',
+                figure={
+                    'data': [{
+                        'x': [1, 2, 3],
+                        'y': [5, 10, 6],
+                        'type': 'bar'
+                    }]
+                }
+            )
+        ])
 
 @app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
 def change_button_text(disabled):
