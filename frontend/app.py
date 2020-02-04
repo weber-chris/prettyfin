@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 import json
 import pandas as pd
-import time
+import frontend.bubblegraph
 
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv')
 
@@ -48,55 +48,13 @@ app.layout = html.Div([
     html.Div(id='tabs-content-example')
 ])
 
+
 @app.callback(Output('tabs-content-example', 'children'),
               [Input('tabs-example', 'value')])
 def render_content(tab):
     if tab == 'tab-graph':
-        return html.Div([
-    # dcc.Graph(id='graph-with-slider', style={'width': '100%', 'display': 'inline-block'}),
-    dcc.Graph(id='graph-bubbles', style={'width': '100%', 'height': '65vh'}),
-    html.Div([
-
-        html.Div([html.Button(html.P('Play', id='start-button-text', style={'width': '5%', }), id='start-button')],
-                 style={'width': '6%'}),
-        html.Div([
-            dcc.Slider(
-                id='year-slider',
-                min=min_year,
-                max=max_year,
-                value=init_year,
-                marks=year_ticks,
-                updatemode='drag',
-                step=None
-            )], style={'width': '90%'})],
-        style={'display': 'flex', 'margin': '20px 0px 20px 0px', 'align-items': 'center'}),
-    html.Div([
-        html.Div([dcc.RadioItems(
-            id='normalize-radio',
-            options=[
-                {'label': 'Absolute', 'value': 'absolute'},
-                {'label': 'Normalized', 'value': 'normalized'}
-            ],
-            value='absolute'
-        )], style={'width': '6%'}),
-        html.Div([dcc.Dropdown(
-            id='x-axis-dropdown',
-            options=[{'label': cat[1], 'value': cat[0]} for cat in funkt_id_map.items()],
-            value='0', multi=False, style={'width': '30vw'})]),
-        html.Div([dcc.Dropdown(
-            id='y-axis-dropdown',
-            options=[{'label': cat[1], 'value': cat[0]} for cat in funkt_id_map.items()],
-            value='1', multi=False, style={'width': '30vw'})]
-        ),
-        html.Div([dcc.Dropdown(
-            id='size-dropdown',
-            options=[{'label': cat[1], 'value': cat[0]} for cat in population_id_map.items()],
-            value='population', multi=False, style={'width': '30vw'})]
-        )
-    ], style={'display': 'flex', 'align-items': 'center'}),
-
-    dcc.Interval(id='interval', disabled=True, interval=1500),
-], style={'width': '100%'})
+        return frontend.bubblegraph.get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks,
+                                                               funkt_id_map, population_id_map)
     elif tab == 'tab-line':
         return html.Div([
             html.H3('Tab content 2'),
@@ -126,17 +84,13 @@ def render_content(tab):
             )
         ])
 
+
 @app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
 def change_button_text(disabled):
     if disabled:
         return 'Play'
     else:
         return 'Stop'
-
-
-# @app.callback(Output('output', 'children'), [Input('interval', 'n_intervals')])
-# def display_count(n):
-#     return f'Interval has fired {n} times'
 
 
 @app.callback([Output('year-slider', 'value'), Output('interval', 'disabled')],
@@ -186,8 +140,8 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         df_canton = df_filtered[df_filtered['canton'] == canton]
 
         if normalize == 'normalized':
-            x_vals = min_max_normalization(df_canton,df_ausgaben, x_axis, canton)
-            y_vals = min_max_normalization(df_canton,df_ausgaben, y_axis, canton)
+            x_vals = min_max_normalization(df_canton, df_ausgaben, x_axis, canton)
+            y_vals = min_max_normalization(df_canton, df_ausgaben, y_axis, canton)
         else:
             x_vals = df_canton[x_axis]
             y_vals = df_canton[y_axis]
@@ -229,7 +183,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
     return fig
 
 
-def min_max_normalization(df_canton_year,df_all, axis, canton):
+def min_max_normalization(df_canton_year, df_all, axis, canton):
     df_canton_all = df_all[df_all['canton'] == canton][axis]
     x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
     return x
