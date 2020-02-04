@@ -8,6 +8,7 @@ import os
 import json
 import pandas as pd
 import frontend.bubblegraph
+import frontend.linegraph
 
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv')
 
@@ -42,8 +43,7 @@ app.layout = html.Div([
     html.H1('Prettyfin'),
     dcc.Tabs(id="tabs-example", value='tab-1-example', children=[
         dcc.Tab(label='Bubble Graph', value='tab-graph'),
-        dcc.Tab(label='Line Graph', value='tab-line'),
-        dcc.Tab(label='Map', value='tab-map'),
+        dcc.Tab(label='Line Graph', value='tab-line')
     ]),
     html.Div(id='tabs-content-example')
 ])
@@ -56,36 +56,11 @@ def render_content(tab):
         return frontend.bubblegraph.get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks,
                                                                funkt_id_map, population_id_map)
     elif tab == 'tab-line':
-        return html.Div([
-            html.H3('Tab content 2'),
-            dcc.Graph(
-                id='graph-2-tabs',
-                figure={
-                    'data': [{
-                        'x': [1, 2, 3],
-                        'y': [5, 10, 6],
-                        'type': 'bar'
-                    }]
-                }
-            )
-        ])
-    elif tab == 'tab-map':
-        return html.Div([
-            html.H3('Tab content 2'),
-            dcc.Graph(
-                id='graph-2-tabs',
-                figure={
-                    'data': [{
-                        'x': [1, 2, 3],
-                        'y': [5, 10, 6],
-                        'type': 'bar'
-                    }]
-                }
-            )
-        ])
+        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map)
 
 
-@app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
+@app.callback(Output('start-button-text', 'children'),
+              [Input('interval', 'disabled')])
 def change_button_text(disabled):
     if disabled:
         return 'Play'
@@ -180,6 +155,54 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
             transition={'duration': 1000},
         )}
 
+    return fig
+
+
+@app.callback(
+    Output('linegraph', 'figure'),
+    [Input('y-axis-dropdown', 'value'),
+     Input('normalize-radio', 'value')]
+)
+def update_line(y_axis, normalize):
+    print('update_line')
+
+    traces = []
+    for canton in cantons:
+        df_canton = df_ausgaben[df_ausgaben['canton'] == canton]
+
+        if normalize == 'normalized':
+            y_vals = min_max_normalization(df_canton, df_ausgaben, y_axis, canton)
+        else:
+            y_vals = df_canton[y_axis]
+
+        traces.append(dict(
+            x=df_canton['year'],
+            y=y_vals,
+            # x=df_canton[x_axis],
+            # y=df_canton[y_axis],
+            text=df_canton['canton'].apply(lambda x: iso_canton_map[x]),
+            mode='lines+markers',
+            opacity=0.7,
+            marker={
+                'line': {'width': 0.5, 'color': 'white'}
+            },
+            name=iso_canton_map[canton]
+        ))
+    if normalize == 'normalized':
+        y_range = [0, 1]
+    else:
+        y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
+    fig = {
+        'data': traces,
+        'layout': dict(
+            xaxis={'title': {'font': {'size': 24}}},
+            yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 24}},
+                   'range': y_range},
+            margin={'l': 100, 'b': 80, 't': 10, 'r': 20},
+            legend={'x': 1, 'y': 1, 'font': {'size': 13}},
+            hovermode='closest',
+            transition={'duration': 1000},
+        )}
     return fig
 
 
