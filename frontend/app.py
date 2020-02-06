@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import json
 import pandas as pd
+import numpy as np
 import time
 
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv')
@@ -21,6 +22,8 @@ with open(folder_preprocessed_data / 'iso_canton_map.json', 'r') as file:
     iso_canton_map = json.load(file)
 with open(folder_preprocessed_data / 'population_id_map.json', 'r') as file:
     population_id_map = json.load(file)
+with open(folder_preprocessed_data / 'canton_borders.json', 'r') as file:
+    canton_borders = json.load(file)
 
 min_year = df_ausgaben['year'].min()
 max_year = df_ausgaben['year'].max()
@@ -40,25 +43,16 @@ server = app.server
 
 app.layout = html.Div([
     html.H1('Prettyfin'),
-    dcc.Tabs(id="tabs-example", value='tab-1-example', children=[
+    dcc.Tabs(id="tabs", value='tab-map', children=[
         dcc.Tab(label='Bubble Graph', value='tab-graph'),
         dcc.Tab(label='Line Graph', value='tab-line'),
         dcc.Tab(label='Map', value='tab-map'),
     ]),
-    html.Div(id='tabs-content-example')
-])
-
-@app.callback(Output('tabs-content-example', 'children'),
-              [Input('tabs-example', 'value')])
-def render_content(tab):
-    if tab == 'tab-graph':
-        return html.Div([
-    # dcc.Graph(id='graph-with-slider', style={'width': '100%', 'display': 'inline-block'}),
-    dcc.Graph(id='graph-bubbles', style={'width': '100%', 'height': '65vh'}),
+    html.Div(id='tabs-content'),
     html.Div([
-
-        html.Div([html.Button(html.P('Play', id='start-button-text', style={'width': '5%', }), id='start-button')],
-                 style={'width': '6%'}),
+        html.Div(
+            [html.Button(html.P('Play', id='start-button-text', style={'width': '5%', }), id='start-button')],
+            style={'width': '6%'}),
         html.Div([
             dcc.Slider(
                 id='year-slider',
@@ -70,33 +64,59 @@ def render_content(tab):
                 step=None
             )], style={'width': '90%'})],
         style={'display': 'flex', 'margin': '20px 0px 20px 0px', 'align-items': 'center'}),
-    html.Div([
-        html.Div([dcc.RadioItems(
-            id='normalize-radio',
-            options=[
-                {'label': 'Absolute', 'value': 'absolute'},
-                {'label': 'Normalized', 'value': 'normalized'}
-            ],
-            value='absolute'
-        )], style={'width': '6%'}),
-        html.Div([dcc.Dropdown(
-            id='x-axis-dropdown',
-            options=[{'label': cat[1], 'value': cat[0]} for cat in funkt_id_map.items()],
-            value='0', multi=False, style={'width': '30vw'})]),
-        html.Div([dcc.Dropdown(
-            id='y-axis-dropdown',
-            options=[{'label': cat[1], 'value': cat[0]} for cat in funkt_id_map.items()],
-            value='1', multi=False, style={'width': '30vw'})]
-        ),
-        html.Div([dcc.Dropdown(
-            id='size-dropdown',
-            options=[{'label': cat[1], 'value': cat[0]} for cat in population_id_map.items()],
-            value='population', multi=False, style={'width': '30vw'})]
-        )
-    ], style={'display': 'flex', 'align-items': 'center'}),
-
     dcc.Interval(id='interval', disabled=True, interval=1500),
-], style={'width': '100%'})
+])
+
+
+@app.callback(Output('tabs-content', 'children'),
+              [Input('tabs', 'value')])
+def render_content(tab):
+    if tab == 'tab-graph':
+        return html.Div([
+            # dcc.Graph(id='graph-with-slider', style={'width': '100%', 'display': 'inline-block'}),
+            dcc.Graph(id='graph-bubbles', style={'width': '100%', 'height': '65vh'}),
+            # html.Div([
+            #
+            #     html.Div(
+            #         [html.Button(html.P('Play', id='start-button-text', style={'width': '5%', }), id='start-button')],
+            #         style={'width': '6%'}),
+            #     html.Div([
+            #         dcc.Slider(
+            #             id='year-slider',
+            #             min=min_year,
+            #             max=max_year,
+            #             value=init_year,
+            #             marks=year_ticks,
+            #             updatemode='drag',
+            #             step=None
+            #         )], style={'width': '90%'})],
+            #     style={'display': 'flex', 'margin': '20px 0px 20px 0px', 'align-items': 'center'}),
+            html.Div([
+                html.Div([dcc.RadioItems(
+                    id='normalize-radio',
+                    options=[
+                        {'label': 'Absolute', 'value': 'absolute'},
+                        {'label': 'Normalized', 'value': 'normalized'}
+                    ],
+                    value='absolute'
+                )], style={'width': '6%'}),
+                html.Div([dcc.Dropdown(
+                    id='x-axis-dropdown',
+                    options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0]} for cat in funkt_id_map.items()],
+                    value='0', multi=False, style={'width': '30vw'})]),
+                html.Div([dcc.Dropdown(
+                    id='y-axis-dropdown',
+                    options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0]} for cat in funkt_id_map.items()],
+                    value='1', multi=False, style={'width': '30vw'})]
+                ),
+                html.Div([dcc.Dropdown(
+                    id='size-dropdown',
+                    options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0]} for cat in population_id_map.items()],
+                    value='population', multi=False, style={'width': '30vw'})]
+                )
+            ], style={'display': 'flex', 'align-items': 'center'}),
+
+        ], style={'width': '100%'})
     elif tab == 'tab-line':
         return html.Div([
             html.H3('Tab content 2'),
@@ -114,17 +134,18 @@ def render_content(tab):
     elif tab == 'tab-map':
         return html.Div([
             html.H3('Swiss Cantons'),
-            # dcc.Graph(
-            #     id='graph-2-tabs',
-            #     figure={
-            #         'data': [{
-            #             'x': [1, 2, 3],
-            #             'y': [5, 10, 6],
-            #             'type': 'bar'
-            #         }]
-            #     }
-            # )
+            html.Div([
+                html.Div([dcc.Graph(id='graph-map', style={'margin': '0 auto', 'display': 'inline-block'}
+                                    )], style={'width': '70vw', 'text-align': 'center'}),
+                html.Div([dcc.Dropdown(
+                    id='map-value-dropdown',
+                    options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0]} for cat in funkt_id_map.items()],
+                    value='0', multi=False, style={'width': '30vw'})]),
+            ],
+                 style={'display': 'flex'}
+            )            ,
         ])
+
 
 @app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
 def change_button_text(disabled):
@@ -186,8 +207,8 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         df_canton = df_filtered[df_filtered['canton'] == canton]
 
         if normalize == 'normalized':
-            x_vals = min_max_normalization(df_canton,df_ausgaben, x_axis, canton)
-            y_vals = min_max_normalization(df_canton,df_ausgaben, y_axis, canton)
+            x_vals = min_max_normalization(df_canton, df_ausgaben, x_axis, canton)
+            y_vals = min_max_normalization(df_canton, df_ausgaben, y_axis, canton)
         else:
             x_vals = df_canton[x_axis]
             y_vals = df_canton[y_axis]
@@ -229,10 +250,68 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
     return fig
 
 
-def min_max_normalization(df_canton_year,df_all, axis, canton):
+@app.callback(
+    Output('graph-map', 'figure'),
+    [Input('map-value-dropdown', 'value'),
+     Input('year-slider', 'value')
+     ]
+)
+def update_map(category, year):
+    fig = go.Figure()
+
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
+                      width=913.5, height=598.5,
+                      margin=go.layout.Margin(l=0, r=0, b=0, t=0, pad=0))
+    # Update axes properties
+    fig.update_xaxes(
+        range=[35, 1050],  # 85
+        zeroline=False,
+        showgrid=False,
+        showticklabels=False,
+        fixedrange=True
+    )
+
+    fig.update_yaxes(
+        range=[665, 0],
+        zeroline=False,
+        showgrid=False,
+        showticklabels=False,
+        fixedrange=True
+    )
+
+    canton_shapes = []
+
+    df_filtered = df_ausgaben[df_ausgaben.year == year]
+    for canton in cantons:
+        # display_value = df_filtered[df_filtered['canton'] == 'ag'][category].values[0]
+        df_canton = df_filtered[df_filtered['canton'] == canton]
+        display_value_normalized = min_max_normalization(df_canton, df_ausgaben, category, canton)
+        display_color = value_to_heat_color(display_value_normalized)
+
+        canton_shape = canton_borders[canton.upper()]
+        canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
+                                             line_color="LightSeaGreen"))
+
+    # Add shapes
+    fig.update_layout(shapes=canton_shapes)
+
+    return fig
+
+
+def min_max_normalization(df_canton_year, df_all, axis, canton):
     df_canton_all = df_all[df_all['canton'] == canton][axis]
     x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
     return x
+
+
+def value_to_heat_color(value):
+    val = value.values[0]
+    if np.isnan(val):
+        return 'rgb(0,0,0)'
+    else:
+        b = 255 * (1 - val)
+        r = 255 * val
+        return f'rgb({round(r)},{0},{round(b)})'
 
 
 if __name__ == '__main__':
