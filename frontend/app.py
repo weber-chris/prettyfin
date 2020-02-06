@@ -9,6 +9,9 @@ import json
 import pandas as pd
 import frontend.bubblegraph
 import frontend.linegraph
+import frontend.mapgraph
+import numpy as np
+import time
 
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv')
 
@@ -22,6 +25,8 @@ with open(folder_preprocessed_data / 'iso_canton_map.json', 'r') as file:
     iso_canton_map = json.load(file)
 with open(folder_preprocessed_data / 'population_id_map.json', 'r') as file:
     population_id_map = json.load(file)
+with open(folder_preprocessed_data / 'canton_borders.json', 'r') as file:
+    canton_borders = json.load(file)
 
 min_year = df_ausgaben['year'].min()
 max_year = df_ausgaben['year'].max()
@@ -41,26 +46,45 @@ server = app.server
 
 app.layout = html.Div([
     html.H1('Prettyfin'),
-    dcc.Tabs(id="tabs-example", value='tab-1-example', children=[
+    dcc.Tabs(id="tabs", value='tab-map', children=[
         dcc.Tab(label='Bubble Graph', value='tab-graph'),
-        dcc.Tab(label='Line Graph', value='tab-line')
+        dcc.Tab(label='Line Graph', value='tab-line'),
+        dcc.Tab(label='Map', value='tab-map')
     ]),
-    html.Div(id='tabs-content-example')
+    html.Div(id='tabs-content'),
+    html.Div([
+        html.Div(
+            [html.Button(html.P('Play', id='start-button-text', style={'width': '5%', }), id='start-button')],
+            style={'width': '6%'}),
+        html.Div([
+            dcc.Slider(
+                id='year-slider',
+                min=min_year,
+                max=max_year,
+                value=init_year,
+                marks=year_ticks,
+                updatemode='drag',
+                step=None
+            )], style={'width': '90%'})],
+        style={'display': 'flex', 'margin': '20px 0px 20px 0px', 'align-items': 'center'}, id='timeline-div'),
+    dcc.Interval(id='interval', disabled=True, interval=1200),
 ])
 
 
-@app.callback(Output('tabs-content-example', 'children'),
-              [Input('tabs-example', 'value')])
+@app.callback([Output('tabs-content', 'children'), Output('timeline-div','style')],
+              [Input('tabs', 'value')])
 def render_content(tab):
     if tab == 'tab-graph':
         return frontend.bubblegraph.get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks,
-                                                               funkt_id_map, population_id_map)
+                                                               funkt_id_map, population_id_map), {'display':'flex'}
     elif tab == 'tab-line':
-        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map)
+        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map),  {'display':'none'}
+    elif tab == 'tab-map':
+        return frontend.mapgraph.get_map_tab_layout(funkt_id_map),  {'display':'flex'}
 
 
-@app.callback(Output('start-button-text', 'children'),
-              [Input('interval', 'disabled')])
+
+@app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
 def change_button_text(disabled):
     if disabled:
         return 'Play'
@@ -159,7 +183,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
 
 
 @app.callback(
-    Output('linegraph', 'figure'),
+    Output('line-graph', 'figure'),
     [Input('y-axis-dropdown', 'value'),
      Input('normalize-radio', 'value')]
 )
@@ -205,11 +229,67 @@ def update_line(y_axis, normalize):
         )}
     return fig
 
+@app.callback(
+    Output('graph-map', 'figure'),
+    [Input('map-value-dropdown', 'value'),
+     Input('year-slider', 'value')
+     ])
+def update_map(category, year):
+    fig = go.Figure()
+
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
+                      width=913.5, height=598.5,
+                      margin=go.layout.Margin(l=0, r=0, b=0, t=0, pad=0))
+    # Update axes properties
+    fig.update_xaxes(
+        range=[35, 1050],  # 85
+        zeroline=False,
+        showgrid=False,
+        showticklabels=False,
+        fixedrange=True
+    )
+
+    fig.update_yaxes(
+        range=[665, 0],
+        zeroline=False,
+        showgrid=False,
+        showticklabels=False,
+        fixedrange=True
+    )
+
+    canton_shapes = []
+
+    df_filtered = df_ausgaben[df_ausgaben.year == year]
+    for canton in cantons:
+        # display_value = df_filtered[df_filtered['canton'] == 'ag'][category].values[0]
+        df_canton = df_filtered[df_filtered['canton'] == canton]
+        display_value_normalized = min_max_normalization(df_canton, df_ausgaben, category, canton)
+        display_color = value_to_heat_color(display_value_normalized)
+
+        canton_shape = canton_borders[canton.upper()]
+        canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
+                                             line_color="LightSeaGreen"))
+
+    # Add shapes
+    fig.update_layout(shapes=canton_shapes)
+
+    return fig
+
 
 def min_max_normalization(df_canton_year, df_all, axis, canton):
     df_canton_all = df_all[df_all['canton'] == canton][axis]
     x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
     return x
+
+
+def value_to_heat_color(value):
+    val = value.values[0]
+    if np.isnan(val):
+        return 'rgb(0,0,0)'
+    else:
+        b = 255 * (1 - val)
+        r = 255 * val
+        return f'rgb({round(r)},{0},{round(b)})'
 
 
 if __name__ == '__main__':
