@@ -71,17 +71,16 @@ app.layout = html.Div([
 ])
 
 
-@app.callback([Output('tabs-content', 'children'), Output('timeline-div','style')],
+@app.callback([Output('tabs-content', 'children'), Output('timeline-div', 'style')],
               [Input('tabs', 'value')])
 def render_content(tab):
     if tab == 'tab-graph':
         return frontend.bubblegraph.get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks,
-                                                               funkt_id_map, population_id_map), {'display':'flex'}
+                                                               funkt_id_map, population_id_map), {'display': 'flex'}
     elif tab == 'tab-line':
-        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map),  {'display':'none'}
+        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map), {'display': 'none'}
     elif tab == 'tab-map':
-        return frontend.mapgraph.get_map_tab_layout(funkt_id_map),  {'display':'flex'}
-
+        return frontend.mapgraph.get_map_tab_layout(funkt_id_map), {'display': 'flex'}
 
 
 @app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
@@ -228,6 +227,7 @@ def update_line(y_axis, normalize):
             transition={'duration': 1000},
         )}
     return fig
+
 
 @app.callback(
     Output('graph-map', 'figure'),

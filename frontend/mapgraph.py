@@ -1,6 +1,7 @@
 import dash_core_components as dcc
 import dash_html_components as html
 
+
 def get_map_tab_layout(funkt_id_map):
     return html.Div([
         html.H3('Swiss Cantons'),
