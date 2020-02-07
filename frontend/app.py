@@ -44,6 +44,9 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.config.suppress_callback_exceptions = True
 server = app.server
 
+app.title = 'PrettyFin'
+
+
 app.layout = html.Div([
     html.H1('Prettyfin'),
     dcc.Tabs(id="tabs", value='tab-map', children=[
