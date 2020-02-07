@@ -47,6 +47,16 @@ server = app.server
 app.title = 'PrettyFin'
 
 
+def year_tick_formater(year_ticks):
+    slider_ticks = {}
+    for year in year_ticks:
+        if int(year) % 2 == 0:
+            slider_ticks[year] = ''
+        else:
+            slider_ticks[year] = year
+    return slider_ticks
+
+
 app.layout = html.Div([
     html.H1('Prettyfin'),
     dcc.Tabs(id="tabs", value='tab-map', children=[
@@ -57,19 +67,20 @@ app.layout = html.Div([
     html.Div(id='tabs-content'),
     html.Div([
         html.Div(
-            [html.Button(html.P('Play', id='start-button-text', style={'width': '5%', }), id='start-button')],
-            style={'width': '6%'}),
+            [html.Button(html.P('Play', id='start-button-text', style={}), id='start-button')],
+            style={}),
         html.Div([
             dcc.Slider(
                 id='year-slider',
                 min=min_year,
                 max=max_year,
                 value=init_year,
-                marks=year_ticks,
+                marks=year_tick_formater(year_ticks),
+                # marks=year_ticks,
                 updatemode='drag',
                 step=None
-            )], style={'width': '90%'})],
-        style={'display': 'flex', 'margin': '20px 0px 20px 0px', 'align-items': 'center'}, id='timeline-div'),
+            )], style={'width': '100%', 'margin': '5px 0px 0px 0px'})],
+        style={'align-content': 'stretch'}, id='timeline-div'),
     dcc.Interval(id='interval', disabled=True, interval=1200),
 ])
 
@@ -162,21 +173,31 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
             name=iso_canton_map[canton]
         ))
 
+    # factor to show some margin, because bubbles span over the edges
+    extra_space_graph = 0.05
     if normalize == 'normalized':
-        x_range = [0, 1]
-        y_range = [0, 1]
+        x_range = [-extra_space_graph, 1 + extra_space_graph]
+        y_range = [-extra_space_graph, 1 + extra_space_graph]
     else:
-        x_range = [df_ausgaben[x_axis].min(), df_ausgaben[x_axis].max()]
-        y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
+        x_range = [
+            df_ausgaben[x_axis].min() - extra_space_graph * (df_ausgaben[x_axis].max() - df_ausgaben[x_axis].min()),
+            df_ausgaben[x_axis].max() + extra_space_graph * (df_ausgaben[x_axis].max() - df_ausgaben[x_axis].min())]
+        y_range = [
+            df_ausgaben[y_axis].min() - extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min()),
+            df_ausgaben[y_axis].max() + extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min())]
+        # x_range = [df_ausgaben[x_axis].min(), df_ausgaben[x_axis].max()]
+        # y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
     fig = {
         'data': traces,
         'layout': dict(
-            xaxis={'title': {'text': funkt_id_map[x_axis], 'font': {'size': 24}},
-                   'range': x_range},
-            yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 24}},
-                   'range': y_range},
-            margin={'l': 100, 'b': 80, 't': 10, 'r': 20},
-            legend={'x': 1, 'y': 1, 'font': {'size': 13}},
+            xaxis={'title': {'text': funkt_id_map[x_axis], 'font': {'size': 16}, 'standoff': 5},
+                   'range': x_range, 'fixedrange': True},
+            yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 16}},
+                   'range': y_range, 'fixedrange': True},
+            margin={'l': 60, 'b': 200, 't': 10, 'r': 20},
+            legend={'y': 0, 'orientation': 'h', 'yanchor': 'top', 'borderwidth': 35, 'bordercolor': '#00000000',
+                    'font': {'size': 13}},
+            # legend={'x': 1, 'y': 1, 'font': {'size': 13}},
             hovermode='closest',
             transition={'duration': 1000},
         )}
@@ -221,14 +242,17 @@ def update_line(y_axis, normalize):
     fig = {
         'data': traces,
         'layout': dict(
-            xaxis={'title': {'font': {'size': 24}}},
-            yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 24}},
-                   'range': y_range},
-            margin={'l': 100, 'b': 80, 't': 10, 'r': 20},
-            legend={'x': 1, 'y': 1, 'font': {'size': 13}},
+            xaxis={ 'fixedrange': True},
+            yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 16}},
+                   'range': y_range, 'fixedrange': True},
+            margin={'l': 60, 'b': 200, 't': 10, 'r': 20},
+            legend={'y': 0, 'orientation': 'h', 'yanchor': 'top', 'borderwidth': 35, 'bordercolor': '#00000000',
+                    'font': {'size': 13}},
+            # legend={'x': 1, 'y': 1, 'font': {'size': 13}},
             hovermode='closest',
             transition={'duration': 1000},
         )}
+
     return fig
 
 
@@ -241,7 +265,7 @@ def update_map(category, year):
     fig = go.Figure()
 
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
-                      width=913.5, height=598.5,
+                      # width=913.5, height=598.5,
                       margin=go.layout.Margin(l=0, r=0, b=0, t=0, pad=0))
     # Update axes properties
     fig.update_xaxes(
