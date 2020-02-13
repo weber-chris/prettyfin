@@ -263,13 +263,13 @@ def update_line(y_axis, normalize):
 @app.callback(
     Output('graph-map', 'figure'),
     [Input('map-value-dropdown', 'value'),
-     Input('year-slider', 'value')
+     Input('year-slider', 'value'),
+     Input('normalize-checkbox-map', 'value')
      ])
-def update_map(category, year):
+def update_map(category, year, normalized):
     fig = go.Figure()
 
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
-                      # width=913.5, height=598.5,
                       margin=go.layout.Margin(l=0, r=0, b=0, t=0, pad=0), showlegend=False)
     # Update axes properties
     fig.update_xaxes(
@@ -288,20 +288,6 @@ def update_map(category, year):
         fixedrange=True
     )
 
-    # for c in canton_borders_xy.items():
-    #     for subarea in c[1]:
-    #         fig.add_trace(
-    #             go.Scatter(
-    #                 x=subarea[0],
-    #                 y=subarea[1],
-    #                 text=c[0],
-    #                 hoverinfo="text",
-    #                 hoveron="fills",
-    #                 fill="toself",
-    #                 mode="none",
-    #                 opacity=0
-    #             ))
-
     canton_shapes = []
 
     df_filtered = df_ausgaben[df_ausgaben.year == year]
@@ -309,9 +295,13 @@ def update_map(category, year):
         # display_value = df_filtered[df_filtered['canton'] == 'ag'][category].values[0]
         df_canton = df_filtered[df_filtered['canton'] == canton]
         display_value = df_canton[category].values[0]
-        display_value_normalized = min_max_normalization_category(df_canton, df_ausgaben, category)
+        display_value_normalized_canton = min_max_normalization_all_canton_one_cat(df_canton, df_ausgaben, category)
+        display_value_normalized_ch = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, category, canton)
 
-        display_color = value_to_heat_color(display_value_normalized)
+        if normalized:
+            display_color = value_to_heat_color(display_value_normalized_ch)
+        else:
+            display_color = value_to_heat_color(display_value_normalized_canton)
 
         canton_shape = canton_borders[canton.upper()]
         canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
@@ -324,7 +314,8 @@ def update_map(category, year):
                     y=subarea[1],
                     text=f'{iso_canton_map[canton]}<br />'
                          + f'CHF {display_value:,.{0}f}<br />'
-                         + f'{display_value_normalized.values[0] * 100:.{2}f}%',
+                         + f'Canton: {display_value_normalized_canton.values[0] * 100:.{2}f}%<br />'
+                         + f'Total: {display_value_normalized_ch.values[0] * 100:.{2}f}%',
                     hoverinfo="text",
                     hoveron="fills",
                     fill="toself",
@@ -346,7 +337,18 @@ def min_max_normalization_one_canton_all_cat(df_canton_year, df_all, axis, canto
     x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
     return x
 
-def min_max_normalization_category(df_canton_year, df_all, category):
+
+def min_max_normalization_one_canton_one_cat(df_canton_year, df_all, category, canton):
+    """
+    Normalize the value to [0:1] in correspondence to the specific canton's min / max over specify category
+    """
+    df_canton_all = df_all[df_all['canton'] == canton][category]
+    x = (df_canton_year[category] - df_canton_all[category].min()) / (
+                df_canton_all[category].max() - df_canton_all[category].min())
+    return x
+
+
+def min_max_normalization_all_canton_one_cat(df_canton_year, df_all, category):
     """
     Normalize the value to [0:1] in correspondence to min / max in this category over all cantons
     """

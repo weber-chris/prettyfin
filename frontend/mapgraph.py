@@ -6,6 +6,13 @@ def get_map_tab_layout(funkt_id_map, disabled_cat_ausgaben):
     return html.Div([
         html.Div([
             html.Div([html.H3('Swiss Cantons'),
+                      html.Div([dcc.Checklist(
+                          id='normalize-checkbox-map',
+                          options=[
+                              {'label': 'Normalized', 'value': 'normalized'}
+                          ],
+                          value=['normalized']
+                      )], className='normalize_checkbox'),
                       dcc.Dropdown(
                           id='map-value-dropdown',
                           options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0],
