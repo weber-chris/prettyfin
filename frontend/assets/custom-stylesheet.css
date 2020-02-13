@@ -1,0 +1,5 @@
+.VirtualizedSelectOption {
+  /*better styling for dropdown when text is long*/
+  overflow: hidden;
+  font-size: .8em;
+}
