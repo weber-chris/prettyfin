@@ -300,8 +300,10 @@ def update_map(category, year, normalized):
 
         if normalized:
             display_color = value_to_heat_color(display_value_normalized_ch)
+            display_value_normalized = display_value_normalized_ch
         else:
             display_color = value_to_heat_color(display_value_normalized_canton)
+            display_value_normalized = display_value_normalized_canton
 
         canton_shape = canton_borders[canton.upper()]
         canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
@@ -312,20 +314,30 @@ def update_map(category, year, normalized):
                 go.Scatter(
                     x=subarea[0],
                     y=subarea[1],
-                    text=f'{iso_canton_map[canton]}<br />'
+                    text=f'<span style="font-size:20;font-weight:bold;">{iso_canton_map[canton]}</span><br />'
                          + f'CHF {display_value:,.{0}f}<br />'
-                         + f'Canton: {display_value_normalized_canton.values[0] * 100:.{2}f}%<br />'
-                         + f'Total: {display_value_normalized_ch.values[0] * 100:.{2}f}%',
+                         + f'{display_value_normalized.values[0] * 100:.{2}f}%</span>',
                     hoverinfo="text",
                     hoveron="fills",
                     fill="toself",
                     fillcolor="LightSeaGreen",
                     opacity=0
-                ))
 
+                ))
     # Add shapes
     fig.update_layout(shapes=canton_shapes)
 
+    fig.add_trace(
+        go.Scatter(
+            x=[0, 0],
+            y=[1, 1],
+            opacity=0,
+            marker=dict(size=16, colorscale=[[0, 'rgb(255,0,0)'], [1, 'rgb(0,0,255)']],
+                        showscale=True, cmax=1, cmin=0)
+            # marker=dict(size=16, colorscale='Bluered',
+            #             showscale=True)
+
+        ))
     return fig
 
 
@@ -344,7 +356,7 @@ def min_max_normalization_one_canton_one_cat(df_canton_year, df_all, category, c
     """
     df_canton_all = df_all[df_all['canton'] == canton][category]
     x = (df_canton_year[category] - df_canton_all[category].min()) / (
-                df_canton_all[category].max() - df_canton_all[category].min())
+            df_canton_all[category].max() - df_canton_all[category].min())
     return x
 
 
