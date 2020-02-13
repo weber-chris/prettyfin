@@ -158,11 +158,11 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         if normalize == ['normalized']:
 
             x_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[x_axis],
-                                                                df_ausgaben, x_axis, canton,
-                                                                None)
+                                       df_ausgaben, x_axis, canton,
+                                       None)
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
-                                                                df_ausgaben, y_axis, canton,
-                                                                None)
+                                       df_ausgaben, y_axis, canton,
+                                       None)
             # x_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, x_axis, canton)
             # y_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, y_axis, canton)
         else:
@@ -196,8 +196,6 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         y_range = [
             df_ausgaben[y_axis].min() - extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min()),
             df_ausgaben[y_axis].max() + extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min())]
-        # x_range = [df_ausgaben[x_axis].min(), df_ausgaben[x_axis].max()]
-        # y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
     fig = {
         'data': traces,
         'layout': dict(
@@ -230,16 +228,14 @@ def update_line(y_axis, normalize):
 
         if normalize == ['normalized']:
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
-                                                                df_ausgaben, y_axis, canton,
-                                                                None)
+                                       df_ausgaben, y_axis, canton,
+                                       None)
         else:
             y_vals = df_canton[y_axis]
 
         traces.append(dict(
             x=df_canton['year'],
             y=y_vals,
-            # x=df_canton[x_axis],
-            # y=df_canton[y_axis],
             text=df_canton['canton'].apply(lambda x: iso_canton_map[x]),
             mode='lines+markers',
             opacity=0.7,
@@ -273,9 +269,9 @@ def update_line(y_axis, normalize):
     Output('graph-map', 'figure'),
     [Input('map-value-dropdown', 'value'),
      Input('year-slider', 'value'),
-     Input('normalize-checkbox-map', 'value')
+     Input('normalize-radio-map', 'value')
      ])
-def update_map(category, year, normalized):
+def update_map(category, year, normalization):
     fig = go.Figure()
 
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
@@ -290,7 +286,7 @@ def update_map(category, year, normalized):
     )
 
     fig.update_yaxes(
-        range=[665, 0],
+        range=[665, 0], #606
         zeroline=False,
         showgrid=False,
         showticklabels=False,
@@ -305,23 +301,18 @@ def update_map(category, year, normalized):
         df_canton = df_filtered[df_filtered['canton'] == canton]
         display_value_absolute = df_canton[category].values[0]
 
-        if normalized:
+        if normalization == 'per_canton':
             display_value_normalized_scaled = min_max_normalize('one_canton_one_cat_all_years', display_value_absolute,
                                                                 df_ausgaben, category, canton,
                                                                 year)
-            # display_value_normalized_ch = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, category,
-            #                                                                        canton)
-            # display_color = value_to_heat_color(display_value_normalized_scaled)
-            # display_value_normalized_scaled = display_value_normalized_ch
+        elif normalization == 'per_year':
+            display_value_normalized_scaled = min_max_normalize('all_canton_one_cat_one_year', display_value_absolute,
+                                                                df_ausgaben, category, canton,
+                                                                year)
         else:
             display_value_normalized_scaled = min_max_normalize('all_canton_one_cat_all_years', display_value_absolute,
                                                                 df_ausgaben, category, canton,
                                                                 year)
-
-            # display_value_normalized_canton = min_max_normalization_all_canton_one_cat_all_years(df_canton, df_ausgaben,
-            #                                                                                      category)
-            # display_color = value_to_heat_color(display_value_normalized_canton)
-            # display_value_normalized_scaled = display_value_normalized_canton
 
         display_color = value_to_heat_color(display_value_normalized_scaled)
         canton_shape = canton_borders[canton.upper()]
@@ -336,7 +327,6 @@ def update_map(category, year, normalized):
                     text=f'<span style="font-size:20;font-weight:bold;">{iso_canton_map[canton]}</span><br />'
                          + f'CHF {display_value_absolute:,.{0}f}<br />'
                          + f'{display_value_normalized_scaled * 100:.{2}f}%</span>',
-                         # + f'{display_value_normalized_scaled.values[0] * 100:.{2}f}%</span>',
                     hoverinfo="text",
                     hoveron="fills",
                     fill="toself",
@@ -354,9 +344,6 @@ def update_map(category, year, normalized):
             opacity=0,
             marker=dict(size=16, colorscale=[[0, 'rgb(255,0,0)'], [1, 'rgb(0,0,255)']],
                         showscale=True, cmax=1, cmin=0)
-            # marker=dict(size=16, colorscale='Bluered',
-            #             showscale=True)
-
         ))
     return fig
 
@@ -376,42 +363,6 @@ def min_max_normalize(normalize_type, display_value, df, category, canton=None, 
     return x
 
 
-#
-# def min_max_normalization_one_canton_all_cat(df_canton_year, df_all, axis, canton):
-#     """
-#     Normalize the value to [0:1] in correspondence to the specific canton's min / max over all categories
-#     """
-#     df_canton_all = df_all[df_all['canton'] == canton][axis]
-#     x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
-#     return x
-#
-#
-# def min_max_normalization_one_canton_one_cat_all_years(df_canton_year, df_all, category, canton):
-#     """
-#     Normalize the value to [0:1] in correspondence to the specific canton's min / max in specify category over the years
-#     """
-#     df_canton_all_years = df_all[df_all['canton'] == canton][category]
-#     x = (df_canton_year[category] - df_canton_all_years[category].min()) / (
-#             df_canton_all_years[category].max() - df_canton_all_years[category].min())
-#     return x
-#
-#
-# def min_max_normalization_all_canton_one_cat_all_years(df_canton_year, df_all, category):
-#     """
-#     Normalize the value to [0:1] in correspondence to min / max in this category over all cantons and all years
-#     """
-#     x = (df_canton_year[category] - df_all[category].min()) / (df_all[category].max() - df_all[category].min())
-#     return x
-#
-#
-# def min_max_normalization_all_canton_one_cat_one_year(df_canton_year, df_all, category, year):
-#     """
-#     Normalize the value to [0:1] in correspondence to min / max in this category over all cantons in specific year
-#     """
-#     x = (df_canton_year[category] - df_all[category].min()) / (df_all[category].max() - df_all[category].min())
-#     return x
-
-
 def value_to_heat_color(value):
     if value is None:
         return 'rgb(0,0,0)'
@@ -419,13 +370,6 @@ def value_to_heat_color(value):
         b = 255 * (1 - value)
         r = 255 * value
         return f'rgb({round(r):.{0}f},{0},{round(b):.{0}f})'
-    # val = value.values[0]
-    # if np.isnan(val):
-    #     return 'rgb(0,0,0)'
-    # else:
-    #     b = 255 * (1 - val)
-    #     r = 255 * val
-    #     return f'rgb({round(r):.{0}f},{0},{round(b):.{0}f})'
 
 
 if __name__ == '__main__':
