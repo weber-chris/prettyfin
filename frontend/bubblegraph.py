@@ -4,7 +4,8 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 
-def get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks, funkt_id_map, population_id_map):
+def get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks, funkt_id_map, disabled_cat_ausgaben,
+                               population_id_map):
     return html.Div([
         dcc.Graph(id='graph-bubbles', style={'min-width': '50vh', 'height': '65vh', 'flex': '1 0 auto'}),
         html.Div([
@@ -18,11 +19,13 @@ def get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks, funkt_
             )], style={}),
             html.Div([dcc.Dropdown(
                 id='x-axis-dropdown',
-                options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0]} for cat in funkt_id_map.items()],
+                options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0], 'disabled': cat[0] in disabled_cat_ausgaben}
+                         for cat in funkt_id_map.items()],
                 value='0', multi=False, style={})]),
             html.Div([dcc.Dropdown(
                 id='y-axis-dropdown',
-                options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0]} for cat in funkt_id_map.items()],
+                options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0], 'disabled': cat[0] in disabled_cat_ausgaben}
+                         for cat in funkt_id_map.items()],
                 value='1', multi=False, style={})]
             ),
             html.Div([dcc.Dropdown(

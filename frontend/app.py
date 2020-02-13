@@ -27,6 +27,8 @@ with open(folder_preprocessed_data / 'population_id_map.json', 'r') as file:
     population_id_map = json.load(file)
 with open(folder_preprocessed_data / 'canton_borders.json', 'r') as file:
     canton_borders = json.load(file)
+disabled_cat_ausgaben = ['03', '08', '13', '18', '26', '27', '28', '38', '48', '58', '64', '68', '76', '78', '86', '88',
+                         '91', '92', '93', '94', '95', '97', '99']
 
 min_year = df_ausgaben['year'].min()
 max_year = df_ausgaben['year'].max()
@@ -90,11 +92,12 @@ app.layout = html.Div([
 def render_content(tab):
     if tab == 'tab-graph':
         return frontend.bubblegraph.get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks,
-                                                               funkt_id_map, population_id_map), {'display': 'flex'}
+                                                               funkt_id_map, disabled_cat_ausgaben,
+                                                               population_id_map), {'display': 'flex'}
     elif tab == 'tab-line':
-        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map), {'display': 'none'}
+        return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map, disabled_cat_ausgaben), {'display': 'none'}
     elif tab == 'tab-map':
-        return frontend.mapgraph.get_map_tab_layout(funkt_id_map), {'display': 'flex'}
+        return frontend.mapgraph.get_map_tab_layout(funkt_id_map, disabled_cat_ausgaben), {'display': 'flex'}
 
 
 @app.callback(Output('start-button-text', 'children'), [Input('interval', 'disabled')])
@@ -242,7 +245,7 @@ def update_line(y_axis, normalize):
     fig = {
         'data': traces,
         'layout': dict(
-            xaxis={ 'fixedrange': True},
+            xaxis={'fixedrange': True},
             yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 16}},
                    'range': y_range, 'fixedrange': True},
             margin={'l': 60, 'b': 200, 't': 10, 'r': 20},
