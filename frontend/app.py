@@ -156,8 +156,15 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         df_canton = df_filtered[df_filtered['canton'] == canton]
 
         if normalize == ['normalized']:
-            x_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, x_axis, canton)
-            y_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, y_axis, canton)
+
+            x_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[x_axis],
+                                                                df_ausgaben, x_axis, canton,
+                                                                None)
+            y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
+                                                                df_ausgaben, y_axis, canton,
+                                                                None)
+            # x_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, x_axis, canton)
+            # y_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, y_axis, canton)
         else:
             x_vals = df_canton[x_axis]
             y_vals = df_canton[y_axis]
@@ -222,7 +229,9 @@ def update_line(y_axis, normalize):
         df_canton = df_ausgaben[df_ausgaben['canton'] == canton]
 
         if normalize == ['normalized']:
-            y_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, y_axis, canton)
+            y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
+                                                                df_ausgaben, y_axis, canton,
+                                                                None)
         else:
             y_vals = df_canton[y_axis]
 
@@ -294,17 +303,27 @@ def update_map(category, year, normalized):
     for canton in cantons:
         # display_value = df_filtered[df_filtered['canton'] == 'ag'][category].values[0]
         df_canton = df_filtered[df_filtered['canton'] == canton]
-        display_value = df_canton[category].values[0]
-        display_value_normalized_canton = min_max_normalization_all_canton_one_cat(df_canton, df_ausgaben, category)
-        display_value_normalized_ch = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, category, canton)
+        display_value_absolute = df_canton[category].values[0]
 
         if normalized:
-            display_color = value_to_heat_color(display_value_normalized_ch)
-            display_value_normalized = display_value_normalized_ch
+            display_value_normalized_scaled = min_max_normalize('one_canton_one_cat_all_years', display_value_absolute,
+                                                                df_ausgaben, category, canton,
+                                                                year)
+            # display_value_normalized_ch = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, category,
+            #                                                                        canton)
+            # display_color = value_to_heat_color(display_value_normalized_scaled)
+            # display_value_normalized_scaled = display_value_normalized_ch
         else:
-            display_color = value_to_heat_color(display_value_normalized_canton)
-            display_value_normalized = display_value_normalized_canton
+            display_value_normalized_scaled = min_max_normalize('all_canton_one_cat_all_years', display_value_absolute,
+                                                                df_ausgaben, category, canton,
+                                                                year)
 
+            # display_value_normalized_canton = min_max_normalization_all_canton_one_cat_all_years(df_canton, df_ausgaben,
+            #                                                                                      category)
+            # display_color = value_to_heat_color(display_value_normalized_canton)
+            # display_value_normalized_scaled = display_value_normalized_canton
+
+        display_color = value_to_heat_color(display_value_normalized_scaled)
         canton_shape = canton_borders[canton.upper()]
         canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
                                              line_color="LightSeaGreen"))
@@ -315,8 +334,9 @@ def update_map(category, year, normalized):
                     x=subarea[0],
                     y=subarea[1],
                     text=f'<span style="font-size:20;font-weight:bold;">{iso_canton_map[canton]}</span><br />'
-                         + f'CHF {display_value:,.{0}f}<br />'
-                         + f'{display_value_normalized.values[0] * 100:.{2}f}%</span>',
+                         + f'CHF {display_value_absolute:,.{0}f}<br />'
+                         + f'{display_value_normalized_scaled * 100:.{2}f}%</span>',
+                         # + f'{display_value_normalized_scaled.values[0] * 100:.{2}f}%</span>',
                     hoverinfo="text",
                     hoveron="fills",
                     fill="toself",
@@ -341,41 +361,71 @@ def update_map(category, year, normalized):
     return fig
 
 
-def min_max_normalization_one_canton_all_cat(df_canton_year, df_all, axis, canton):
-    """
-    Normalize the value to [0:1] in correspondence to the specific canton's min / max over all categories
-    """
-    df_canton_all = df_all[df_all['canton'] == canton][axis]
-    x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
+def min_max_normalize(normalize_type, display_value, df, category, canton=None, year=None):
+    if normalize_type == 'one_canton_one_cat_all_years':
+        scale_column = df[df['canton'] == canton][category]
+    elif normalize_type == 'all_canton_one_cat_one_year':
+        scale_column = df[df['year'] == year][category]
+    elif normalize_type == 'all_canton_one_cat_all_years':
+        scale_column = df[category]
+    else:
+        scale_column = None
+
+    x = (display_value - scale_column.min()) / (
+            scale_column.max() - scale_column.min())
     return x
 
 
-def min_max_normalization_one_canton_one_cat(df_canton_year, df_all, category, canton):
-    """
-    Normalize the value to [0:1] in correspondence to the specific canton's min / max over specify category
-    """
-    df_canton_all = df_all[df_all['canton'] == canton][category]
-    x = (df_canton_year[category] - df_canton_all[category].min()) / (
-            df_canton_all[category].max() - df_canton_all[category].min())
-    return x
-
-
-def min_max_normalization_all_canton_one_cat(df_canton_year, df_all, category):
-    """
-    Normalize the value to [0:1] in correspondence to min / max in this category over all cantons
-    """
-    x = (df_canton_year[category] - df_all[category].min()) / (df_all[category].max() - df_all[category].min())
-    return x
+#
+# def min_max_normalization_one_canton_all_cat(df_canton_year, df_all, axis, canton):
+#     """
+#     Normalize the value to [0:1] in correspondence to the specific canton's min / max over all categories
+#     """
+#     df_canton_all = df_all[df_all['canton'] == canton][axis]
+#     x = (df_canton_year[axis] - df_canton_all.min()) / (df_canton_all.max() - df_canton_all.min())
+#     return x
+#
+#
+# def min_max_normalization_one_canton_one_cat_all_years(df_canton_year, df_all, category, canton):
+#     """
+#     Normalize the value to [0:1] in correspondence to the specific canton's min / max in specify category over the years
+#     """
+#     df_canton_all_years = df_all[df_all['canton'] == canton][category]
+#     x = (df_canton_year[category] - df_canton_all_years[category].min()) / (
+#             df_canton_all_years[category].max() - df_canton_all_years[category].min())
+#     return x
+#
+#
+# def min_max_normalization_all_canton_one_cat_all_years(df_canton_year, df_all, category):
+#     """
+#     Normalize the value to [0:1] in correspondence to min / max in this category over all cantons and all years
+#     """
+#     x = (df_canton_year[category] - df_all[category].min()) / (df_all[category].max() - df_all[category].min())
+#     return x
+#
+#
+# def min_max_normalization_all_canton_one_cat_one_year(df_canton_year, df_all, category, year):
+#     """
+#     Normalize the value to [0:1] in correspondence to min / max in this category over all cantons in specific year
+#     """
+#     x = (df_canton_year[category] - df_all[category].min()) / (df_all[category].max() - df_all[category].min())
+#     return x
 
 
 def value_to_heat_color(value):
-    val = value.values[0]
-    if np.isnan(val):
+    if value is None:
         return 'rgb(0,0,0)'
     else:
-        b = 255 * (1 - val)
-        r = 255 * val
+        b = 255 * (1 - value)
+        r = 255 * value
         return f'rgb({round(r):.{0}f},{0},{round(b):.{0}f})'
+    # val = value.values[0]
+    # if np.isnan(val):
+    #     return 'rgb(0,0,0)'
+    # else:
+    #     b = 255 * (1 - val)
+    #     r = 255 * val
+    #     return f'rgb({round(r):.{0}f},{0},{round(b):.{0}f})'
 
 
 if __name__ == '__main__':

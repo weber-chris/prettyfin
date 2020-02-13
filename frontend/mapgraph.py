@@ -17,7 +17,7 @@ def get_map_tab_layout(funkt_id_map, disabled_cat_ausgaben):
                           id='map-value-dropdown',
                           options=[{'label': f'{cat[0]} - {cat[1]}', 'value': cat[0],
                                     'disabled': cat[0] in disabled_cat_ausgaben} for cat in funkt_id_map.items()],
-                          value='0', multi=False, style={'width': '300px', 'margin': '0px 0px 0px 0px'})],
+                          value='Total', multi=False, style={'width': '300px', 'margin': '0px 0px 0px 0px'})],
                      style={'display': 'flex', 'justify-content': 'space-between', 'align-items':'center'}),
             html.Div([
                 html.Div([dcc.Graph(id='graph-map', style={'margin': '0 auto', 'width': '97vw', 'height': '63.5vw',
