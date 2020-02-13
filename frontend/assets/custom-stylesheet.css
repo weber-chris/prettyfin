@@ -3,3 +3,7 @@
   overflow: hidden;
   font-size: .8em;
 }
+
+.normalize_checkbox{
+  margin-top : 5px;
+}

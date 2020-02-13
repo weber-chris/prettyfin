@@ -61,7 +61,7 @@ def year_tick_formater(year_ticks):
 
 app.layout = html.Div([
     html.H1('Prettyfin'),
-    dcc.Tabs(id="tabs", value='tab-map', children=[
+    dcc.Tabs(id="tabs", value='tab-line', children=[
         dcc.Tab(label='Bubble Graph', value='tab-graph'),
         dcc.Tab(label='Line Graph', value='tab-line'),
         dcc.Tab(label='Map', value='tab-map')
@@ -91,8 +91,7 @@ app.layout = html.Div([
               [Input('tabs', 'value')])
 def render_content(tab):
     if tab == 'tab-graph':
-        return frontend.bubblegraph.get_bubblegraph_tab_layout(min_year, max_year, init_year, year_ticks,
-                                                               funkt_id_map, disabled_cat_ausgaben,
+        return frontend.bubblegraph.get_bubblegraph_tab_layout(funkt_id_map, disabled_cat_ausgaben,
                                                                population_id_map), {'display': 'flex'}
     elif tab == 'tab-line':
         return frontend.linegraph.get_linegraph_tab_layout(funkt_id_map, disabled_cat_ausgaben), {'display': 'none'}
@@ -143,7 +142,7 @@ def slide_adjust(n_intervals, n_clicks, slider_year, disabled):
     [Input('x-axis-dropdown', 'value'),
      Input('y-axis-dropdown', 'value'),
      Input('size-dropdown', 'value'),
-     Input('normalize-radio', 'value'),
+     Input('normalize-checkbox-bubble', 'value'),
      Input('year-slider', 'value')]
 )
 def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year):
@@ -154,7 +153,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
     for canton in cantons:
         df_canton = df_filtered[df_filtered['canton'] == canton]
 
-        if normalize == 'normalized':
+        if normalize == ['normalized']:
             x_vals = min_max_normalization(df_canton, df_ausgaben, x_axis, canton)
             y_vals = min_max_normalization(df_canton, df_ausgaben, y_axis, canton)
         else:
@@ -178,7 +177,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
 
     # factor to show some margin, because bubbles span over the edges
     extra_space_graph = 0.05
-    if normalize == 'normalized':
+    if normalize == ['normalized']:
         x_range = [-extra_space_graph, 1 + extra_space_graph]
         y_range = [-extra_space_graph, 1 + extra_space_graph]
     else:
@@ -211,7 +210,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
 @app.callback(
     Output('line-graph', 'figure'),
     [Input('y-axis-dropdown', 'value'),
-     Input('normalize-radio', 'value')]
+     Input('normalize-checkbox-line', 'value')]
 )
 def update_line(y_axis, normalize):
     print('update_line')
@@ -220,7 +219,7 @@ def update_line(y_axis, normalize):
     for canton in cantons:
         df_canton = df_ausgaben[df_ausgaben['canton'] == canton]
 
-        if normalize == 'normalized':
+        if normalize == ['normalized']:
             y_vals = min_max_normalization(df_canton, df_ausgaben, y_axis, canton)
         else:
             y_vals = df_canton[y_axis]
@@ -238,7 +237,7 @@ def update_line(y_axis, normalize):
             },
             name=iso_canton_map[canton]
         ))
-    if normalize == 'normalized':
+    if normalize == ['normalized']:
         y_range = [0, 1]
     else:
         y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
