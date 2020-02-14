@@ -10,8 +10,6 @@ import pandas as pd
 import frontend.bubblegraph
 import frontend.linegraph
 import frontend.mapgraph
-import numpy as np
-import time
 
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv')
 
@@ -42,6 +40,12 @@ cantons = df_ausgaben['canton'].unique()
 cantons.sort()  # needed so that legend is alphabetical
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+gradient_start_color = [20, 70,180,0.7]
+gradient_end_color = [169,69, 66,0.9]
+
+# gradient_start_color = [0, 0, 255,0.7]
+# gradient_end_color = [255, 0, 0,0.7]
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # because we use tabs,
@@ -334,7 +338,7 @@ def update_map(category, year, normalization, inflation_cleaned):
         display_color = value_to_heat_color(display_value_normalized_scaled)
         canton_shape = canton_borders[canton.upper()]
         canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
-                                             line_color="LightSeaGreen"))
+                                             line_color='rgba(25,25,25,0.1)'))
 
         for subarea in canton_borders_xy[canton.upper()]:
             fig.add_trace(
@@ -347,19 +351,22 @@ def update_map(category, year, normalization, inflation_cleaned):
                     hoverinfo="text",
                     hoveron="fills",
                     fill="toself",
-                    fillcolor="LightSeaGreen",
+                    fillcolor='rgba(25,25,25,0.1)',
                     opacity=0
 
                 ))
     # Add shapes
     fig.update_layout(shapes=canton_shapes)
 
+    # Dummy Scatter point to be able to show the gradient scale as a legend
     fig.add_trace(
         go.Scatter(
             x=[0, 0],
             y=[1, 1],
             opacity=0,
-            marker=dict(size=16, colorscale=[[0, 'rgb(255,0,0)'], [1, 'rgb(0,0,255)']],
+            marker=dict(size=16, colorscale=[
+                [0, f'rgb({gradient_start_color[0]},{gradient_start_color[1]},{gradient_start_color[2]})'],
+                [1, f'rgb({gradient_end_color[0]},{gradient_end_color[1]},{gradient_end_color[2]})']],
                         showscale=True, cmax=1, cmin=0)
         ))
     return fig
@@ -390,9 +397,13 @@ def value_to_heat_color(value):
     if value is None:
         return 'rgb(0,0,0)'
     else:
-        b = 255 * (1 - value)
-        r = 255 * value
-        return f'rgb({round(r):.{0}f},{0},{round(b):.{0}f})'
+        r = value * gradient_end_color[0] + (1 - value) * gradient_start_color[0]
+        g = value * gradient_end_color[1] + (1 - value) * gradient_start_color[1]
+        b = value * gradient_end_color[2] + (1 - value) * gradient_start_color[2]
+        a = value * gradient_end_color[3] + (1 - value) * gradient_start_color[3]
+        # b = 255 * (1 - value)
+        # r = 255 * value
+        return f'rgba({round(r):.{0}f},{round(g):.{0}f},{round(b):.{0}f},{a})'
 
 
 if __name__ == '__main__':
