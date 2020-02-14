@@ -16,6 +16,8 @@ import time
 
 folder_preprocessed_data = Path(os.getcwd()) / 'data' / 'preprocessed'
 df_ausgaben = pd.read_csv(folder_preprocessed_data / 'df_ausgaben_all_merged.csv', index_col=0)
+df_ausgaben_infl = pd.read_csv(folder_preprocessed_data / 'df_ausgaben_all_infl_merged.csv', index_col=0)
+
 # df_einnahmen = pd.read_csv(folder_preprocessed_data / 'df_einnahmen_all.csv', index_col=0)
 
 with open(folder_preprocessed_data / 'funkt_id_map.json', 'r') as file:
@@ -28,6 +30,8 @@ with open(folder_preprocessed_data / 'canton_borders.json', 'r') as file:
     canton_borders = json.load(file)
 with open(folder_preprocessed_data / 'canton_borders_xy.json', 'r') as file:
     canton_borders_xy = json.load(file)
+with open(folder_preprocessed_data / 'inflation_rate.json', 'r') as file:
+    inflation_rate = json.load(file)
 disabled_cat_ausgaben = ['03', '08', '13', '18', '26', '27', '28', '38', '48', '58', '64', '68', '76', '78', '86', '88',
                          '91', '92', '93', '94', '95', '97', '99']
 
@@ -150,12 +154,18 @@ def slide_adjust(n_intervals, n_clicks, slider_year, disabled):
      Input('y-axis-dropdown', 'value'),
      Input('size-dropdown', 'value'),
      Input('normalize-checkbox-bubble', 'value'),
+     Input('inflation-checkbox-bubble', 'value'),
      Input('year-slider', 'value')]
 )
-def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year):
+def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, inflation_cleaned, selected_year):
     print('update_bubble')
 
-    df_filtered = df_ausgaben[df_ausgaben.year == selected_year]
+    if inflation_cleaned:
+        df_aus = df_ausgaben_infl
+    else:
+        df_aus = df_ausgaben
+
+    df_filtered = df_aus[df_aus.year == selected_year]
     traces = []
     for canton in cantons:
         df_canton = df_filtered[df_filtered['canton'] == canton]
@@ -163,10 +173,10 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         if normalize == ['normalized']:
 
             x_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[x_axis],
-                                       df_ausgaben, x_axis, canton,
+                                       df_aus, x_axis, canton,
                                        None)
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
-                                       df_ausgaben, y_axis, canton,
+                                       df_aus, y_axis, canton,
                                        None)
             # x_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, x_axis, canton)
             # y_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, y_axis, canton)
@@ -183,7 +193,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
             mode='markers',
             opacity=0.7,
             marker={
-                'size': df_canton[bubble_size_dropdown] / df_ausgaben[bubble_size_dropdown].max() * 200,
+                'size': df_canton[bubble_size_dropdown] / df_aus[bubble_size_dropdown].max() * 200,
                 'line': {'width': 0.5, 'color': 'white'}
             },
             name=iso_canton_map[canton]
@@ -196,11 +206,11 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
         y_range = [-extra_space_graph, 1 + extra_space_graph]
     else:
         x_range = [
-            df_ausgaben[x_axis].min() - extra_space_graph * (df_ausgaben[x_axis].max() - df_ausgaben[x_axis].min()),
-            df_ausgaben[x_axis].max() + extra_space_graph * (df_ausgaben[x_axis].max() - df_ausgaben[x_axis].min())]
+            df_aus[x_axis].min() - extra_space_graph * (df_aus[x_axis].max() - df_aus[x_axis].min()),
+            df_aus[x_axis].max() + extra_space_graph * (df_aus[x_axis].max() - df_aus[x_axis].min())]
         y_range = [
-            df_ausgaben[y_axis].min() - extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min()),
-            df_ausgaben[y_axis].max() + extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min())]
+            df_aus[y_axis].min() - extra_space_graph * (df_aus[y_axis].max() - df_aus[y_axis].min()),
+            df_aus[y_axis].max() + extra_space_graph * (df_aus[y_axis].max() - df_aus[y_axis].min())]
     fig = {
         'data': traces,
         'layout': dict(
@@ -222,18 +232,24 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
 @app.callback(
     Output('line-graph', 'figure'),
     [Input('y-axis-dropdown', 'value'),
-     Input('normalize-checkbox-line', 'value')]
+     Input('normalize-checkbox-line', 'value'),
+     Input('inflation-checkbox-line', 'value')]
 )
-def update_line(y_axis, normalize):
+def update_line(y_axis, normalize, inflation_cleaned):
     print('update_line')
 
     traces = []
+    if inflation_cleaned:
+        df_aus = df_ausgaben_infl
+    else:
+        df_aus = df_ausgaben
+
     for canton in cantons:
-        df_canton = df_ausgaben[df_ausgaben['canton'] == canton]
+        df_canton = df_aus[df_aus['canton'] == canton]
 
         if normalize == ['normalized']:
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
-                                       df_ausgaben, y_axis, canton,
+                                       df_aus, y_axis, canton,
                                        None)
         else:
             y_vals = df_canton[y_axis]
@@ -249,16 +265,13 @@ def update_line(y_axis, normalize):
             },
             name=iso_canton_map[canton]
         ))
-    if normalize == ['normalized']:
-        y_range = [0, 1]
-    else:
-        y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
+
     fig = {
         'data': traces,
         'layout': dict(
             xaxis={'fixedrange': True},
             yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 16}},
-                   'range': y_range, 'fixedrange': True},
+                   'fixedrange': True},
             margin={'l': 60, 'b': 200, 't': 10, 'r': 20},
             legend={'y': 0, 'orientation': 'h', 'yanchor': 'top', 'borderwidth': 35, 'bordercolor': '#00000000',
                     'font': {'size': 13}},
@@ -274,13 +287,12 @@ def update_line(y_axis, normalize):
     Output('graph-map', 'figure'),
     [Input('map-value-dropdown', 'value'),
      Input('year-slider', 'value'),
-     Input('normalize-radio-map', 'value')
+     Input('normalize-radio-map', 'value'),
+     Input('inflation-checkbox-map', 'value')
      ], [State('graph-map', 'figure')])
-def update_map(category, year, normalization, fig):
+def update_map(category, year, normalization, inflation_cleaned, fig):
     # TODO further speedup with clientside function
     # https://community.plot.ly/t/is-it-possible-to-update-just-layout-not-whole-figure-of-graph-in-callback/8300/12
-    start1 = time.time()
-    # fig = go.Figure()
     if fig is None:
         fig = go.Figure()
 
@@ -319,6 +331,11 @@ def update_map(category, year, normalization, fig):
     else:
         fig = go.Figure(fig)
 
+    if inflation_cleaned:
+        df_aus = df_ausgaben_infl
+    else:
+        df_aus = df_ausgaben
+
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
                       margin=go.layout.Margin(l=0, r=0, b=0, t=0, pad=0), showlegend=False)
     # Update axes properties
@@ -339,22 +356,22 @@ def update_map(category, year, normalization, fig):
     )
 
     # canton_shapes = []
-    df_filtered = df_ausgaben[df_ausgaben.year == year]
+    df_filtered = df_aus[df_aus.year == year]
     for canton in cantons:
         df_canton = df_filtered[df_filtered['canton'] == canton]
         display_value_absolute = df_canton[category].values[0]
 
         if normalization == 'per_canton':
             display_value_normalized_scaled = min_max_normalize('one_canton_one_cat_all_years', display_value_absolute,
-                                                                df_ausgaben, category, canton,
+                                                                df_aus, category, canton,
                                                                 year)
         elif normalization == 'per_year':
             display_value_normalized_scaled = min_max_normalize('all_canton_one_cat_one_year', display_value_absolute,
-                                                                df_ausgaben, category, canton,
+                                                                df_aus, category, canton,
                                                                 year)
         else:
             display_value_normalized_scaled = min_max_normalize('all_canton_one_cat_all_years', display_value_absolute,
-                                                                df_ausgaben, category, canton,
+                                                                df_aus, category, canton,
                                                                 year)
 
         display_color = value_to_heat_color(display_value_normalized_scaled)
@@ -367,9 +384,6 @@ def update_map(category, year, normalization, fig):
         for shape in fig.layout.shapes:
             if shape.name == f'shape_{canton}':
                 shape.fillcolor = display_color
-    # Add shapes
-    # fig.update_layout(shapes=canton_shapes)
-    print(time.time() - start1)
     return fig
 
 
@@ -386,6 +400,12 @@ def min_max_normalize(normalize_type, display_value, df, category, canton=None, 
     x = (display_value - scale_column.min()) / (
             scale_column.max() - scale_column.min())
     return x
+
+
+def inflation_correction(amount, year_from, year_to=2018):
+    for i in range(year_from, year_to + 1):
+        amount = amount * inflation_rate[str(i)]
+    return amount
 
 
 def value_to_heat_color(value):
