@@ -10,6 +10,7 @@ import pandas as pd
 import frontend.bubblegraph
 import frontend.linegraph
 import frontend.mapgraph
+import time
 
 # df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminderDataFiveYear.csv')
 
@@ -39,8 +40,8 @@ cantons.sort()  # needed so that legend is alphabetical
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-gradient_start_color = [20, 70,180,0.7]
-gradient_end_color = [169,69, 66,0.9]
+gradient_start_color = [20, 70, 180, 0.7]
+gradient_end_color = [169, 69, 66, 0.9]
 
 # gradient_start_color = [0, 0, 255,0.7]
 # gradient_end_color = [255, 0, 0,0.7]
@@ -263,7 +264,7 @@ def update_line(y_axis, normalize):
                     'font': {'size': 13}},
             # legend={'x': 1, 'y': 1, 'font': {'size': 13}},
             hovermode='closest',
-            transition={'duration': 1000},
+            transition={'duration': 1800},
         )}
 
     return fig
@@ -274,9 +275,49 @@ def update_line(y_axis, normalize):
     [Input('map-value-dropdown', 'value'),
      Input('year-slider', 'value'),
      Input('normalize-radio-map', 'value')
-     ])
-def update_map(category, year, normalization):
-    fig = go.Figure()
+     ], [State('graph-map', 'figure')])
+def update_map(category, year, normalization, fig):
+    # TODO further speedup with clientside function
+    # https://community.plot.ly/t/is-it-possible-to-update-just-layout-not-whole-figure-of-graph-in-callback/8300/12
+    start1 = time.time()
+    # fig = go.Figure()
+    if fig is None:
+        fig = go.Figure()
+
+        canton_shapes = []
+        for canton in cantons:
+            canton_shape = canton_borders[canton.upper()]
+            canton_shapes.append(go.layout.Shape(type='path', path=canton_shape,
+                                                 line_color='rgba(25,25,25,0.1)', name=f'shape_{canton}'))
+            id = 0
+            for subarea in canton_borders_xy[canton.upper()]:
+                fig.add_trace(
+                    go.Scatter(
+                        x=subarea[0],
+                        y=subarea[1],
+                        hoverinfo="text",
+                        hoveron="fills",
+                        fill="toself",
+                        fillcolor='rgba(25,25,25,0.1)',
+                        opacity=0,
+                        name=f'hover_{canton}_{id}'
+                    ))
+                id += 1
+
+        fig.update_layout(shapes=canton_shapes)
+
+        fig.add_trace(
+            go.Scatter(
+                x=[0, 0],
+                y=[1, 1],
+                opacity=0,
+                marker=dict(size=16, colorscale=[
+                    [0, f'rgb({gradient_start_color[0]},{gradient_start_color[1]},{gradient_start_color[2]})'],
+                    [1, f'rgb({gradient_end_color[0]},{gradient_end_color[1]},{gradient_end_color[2]})']],
+                            showscale=True, cmax=1, cmin=0)
+            ))
+    else:
+        fig = go.Figure(fig)
 
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
                       margin=go.layout.Margin(l=0, r=0, b=0, t=0, pad=0), showlegend=False)
@@ -297,11 +338,9 @@ def update_map(category, year, normalization):
         fixedrange=True
     )
 
-    canton_shapes = []
-
+    # canton_shapes = []
     df_filtered = df_ausgaben[df_ausgaben.year == year]
     for canton in cantons:
-        # display_value = df_filtered[df_filtered['canton'] == 'ag'][category].values[0]
         df_canton = df_filtered[df_filtered['canton'] == canton]
         display_value_absolute = df_canton[category].values[0]
 
@@ -319,39 +358,18 @@ def update_map(category, year, normalization):
                                                                 year)
 
         display_color = value_to_heat_color(display_value_normalized_scaled)
-        canton_shape = canton_borders[canton.upper()]
-        canton_shapes.append(go.layout.Shape(type='path', path=canton_shape, fillcolor=display_color,
-                                             line_color='rgba(25,25,25,0.1)'))
 
-        for subarea in canton_borders_xy[canton.upper()]:
-            fig.add_trace(
-                go.Scatter(
-                    x=subarea[0],
-                    y=subarea[1],
-                    text=f'<span style="font-size:20;font-weight:bold;">{iso_canton_map[canton]}</span><br />'
-                         + f'CHF {display_value_absolute:,.{0}f}<br />'
-                         + f'{display_value_normalized_scaled * 100:.{2}f}%</span>',
-                    hoverinfo="text",
-                    hoveron="fills",
-                    fill="toself",
-                    fillcolor='rgba(25,25,25,0.1)',
-                    opacity=0
-
-                ))
+        for trace in fig.data:
+            if trace.name and trace.name.startswith(f'hover_{canton}'):
+                trace.text = f'<span style="font-size:20;font-weight:bold;">{iso_canton_map[canton]}</span><br />' \
+                             + f'CHF {display_value_absolute:,.{0}f}<br />' \
+                             + f'{display_value_normalized_scaled * 100:.{2}f}%</span>'
+        for shape in fig.layout.shapes:
+            if shape.name == f'shape_{canton}':
+                shape.fillcolor = display_color
     # Add shapes
-    fig.update_layout(shapes=canton_shapes)
-
-    # Dummy Scatter point to be able to show the gradient scale as a legend
-    fig.add_trace(
-        go.Scatter(
-            x=[0, 0],
-            y=[1, 1],
-            opacity=0,
-            marker=dict(size=16, colorscale=[
-                [0, f'rgb({gradient_start_color[0]},{gradient_start_color[1]},{gradient_start_color[2]})'],
-                [1, f'rgb({gradient_end_color[0]},{gradient_end_color[1]},{gradient_end_color[2]})']],
-                        showscale=True, cmax=1, cmin=0)
-        ))
+    # fig.update_layout(shapes=canton_shapes)
+    print(time.time() - start1)
     return fig
 
 
@@ -378,8 +396,6 @@ def value_to_heat_color(value):
         g = value * gradient_end_color[1] + (1 - value) * gradient_start_color[1]
         b = value * gradient_end_color[2] + (1 - value) * gradient_start_color[2]
         a = value * gradient_end_color[3] + (1 - value) * gradient_start_color[3]
-        # b = 255 * (1 - value)
-        # r = 255 * value
         return f'rgba({round(r):.{0}f},{round(g):.{0}f},{round(b):.{0}f},{a})'
 
 
