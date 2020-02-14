@@ -29,6 +29,8 @@ with open(folder_preprocessed_data / 'canton_borders.json', 'r') as file:
     canton_borders = json.load(file)
 with open(folder_preprocessed_data / 'canton_borders_xy.json', 'r') as file:
     canton_borders_xy = json.load(file)
+with open(folder_preprocessed_data / 'inflation_rate.json', 'r') as file:
+    inflation_rate = json.load(file)
 disabled_cat_ausgaben = ['03', '08', '13', '18', '26', '27', '28', '38', '48', '58', '64', '68', '76', '78', '86', '88',
                          '91', '92', '93', '94', '95', '97', '99']
 
@@ -145,15 +147,21 @@ def slide_adjust(n_intervals, n_clicks, slider_year, disabled):
      Input('y-axis-dropdown', 'value'),
      Input('size-dropdown', 'value'),
      Input('normalize-checkbox-bubble', 'value'),
+     Input('inflation-checkbox-bubble', 'value'),
      Input('year-slider', 'value')]
 )
-def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year):
+def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, inflation_cleaned, selected_year):
     print('update_bubble')
 
     df_filtered = df_ausgaben[df_ausgaben.year == selected_year]
     traces = []
     for canton in cantons:
         df_canton = df_filtered[df_filtered['canton'] == canton]
+
+        if inflation_cleaned:
+            df_canton[x_axis] = df_canton.apply(lambda x: inflation_correction(x[y_axis], x['year']), axis=1)
+            df_canton[y_axis] = df_canton.apply(lambda x: inflation_correction(x[y_axis], x['year']), axis=1)
+
 
         if normalize == ['normalized']:
 
@@ -217,14 +225,18 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, selected_year
 @app.callback(
     Output('line-graph', 'figure'),
     [Input('y-axis-dropdown', 'value'),
-     Input('normalize-checkbox-line', 'value')]
+     Input('normalize-checkbox-line', 'value'),
+     Input('inflation-checkbox-line', 'value')]
 )
-def update_line(y_axis, normalize):
+def update_line(y_axis, normalize, inflation_cleaned):
     print('update_line')
 
     traces = []
     for canton in cantons:
         df_canton = df_ausgaben[df_ausgaben['canton'] == canton]
+
+        if inflation_cleaned:
+            df_canton[y_axis] = df_canton.apply(lambda x: inflation_correction(x[y_axis], x['year']), axis=1)
 
         if normalize == ['normalized']:
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
@@ -269,9 +281,10 @@ def update_line(y_axis, normalize):
     Output('graph-map', 'figure'),
     [Input('map-value-dropdown', 'value'),
      Input('year-slider', 'value'),
-     Input('normalize-radio-map', 'value')
+     Input('normalize-radio-map', 'value'),
+     Input('inflation-checkbox-map', 'value')
      ])
-def update_map(category, year, normalization):
+def update_map(category, year, normalization, inflation_cleaned):
     fig = go.Figure()
 
     fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
@@ -286,7 +299,7 @@ def update_map(category, year, normalization):
     )
 
     fig.update_yaxes(
-        range=[665, 0], #606
+        range=[665, 0],  # 606
         zeroline=False,
         showgrid=False,
         showticklabels=False,
@@ -300,6 +313,10 @@ def update_map(category, year, normalization):
         # display_value = df_filtered[df_filtered['canton'] == 'ag'][category].values[0]
         df_canton = df_filtered[df_filtered['canton'] == canton]
         display_value_absolute = df_canton[category].values[0]
+
+        if inflation_cleaned:
+            df_canton[display_value_absolute] = df_canton.apply(lambda x: inflation_correction(x[display_value_absolute], x['year']), axis=1)
+
 
         if normalization == 'per_canton':
             display_value_normalized_scaled = min_max_normalize('one_canton_one_cat_all_years', display_value_absolute,
@@ -361,6 +378,12 @@ def min_max_normalize(normalize_type, display_value, df, category, canton=None, 
     x = (display_value - scale_column.min()) / (
             scale_column.max() - scale_column.min())
     return x
+
+
+def inflation_correction(amount, year_from, year_to=2018):
+    for i in range(year_from, year_to + 1):
+        amount = amount * inflation_rate[str(i)]
+    return amount
 
 
 def value_to_heat_color(value):
