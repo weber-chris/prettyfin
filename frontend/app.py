@@ -15,6 +15,8 @@ import frontend.mapgraph
 
 folder_preprocessed_data = Path(os.getcwd()) / 'data' / 'preprocessed'
 df_ausgaben = pd.read_csv(folder_preprocessed_data / 'df_ausgaben_all_merged.csv', index_col=0)
+df_ausgaben_infl = pd.read_csv(folder_preprocessed_data / 'df_ausgaben_all_infl_merged.csv', index_col=0)
+
 # df_einnahmen = pd.read_csv(folder_preprocessed_data / 'df_einnahmen_all.csv', index_col=0)
 
 with open(folder_preprocessed_data / 'funkt_id_map.json', 'r') as file:
@@ -41,8 +43,8 @@ cantons.sort()  # needed so that legend is alphabetical
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-gradient_start_color = [20, 70,180,0.7]
-gradient_end_color = [169,69, 66,0.9]
+gradient_start_color = [20, 70, 180, 0.7]
+gradient_end_color = [169, 69, 66, 0.9]
 
 # gradient_start_color = [0, 0, 255,0.7]
 # gradient_end_color = [255, 0, 0,0.7]
@@ -157,23 +159,23 @@ def slide_adjust(n_intervals, n_clicks, slider_year, disabled):
 def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, inflation_cleaned, selected_year):
     print('update_bubble')
 
-    df_filtered = df_ausgaben[df_ausgaben.year == selected_year]
+    if inflation_cleaned:
+        df_aus = df_ausgaben_infl
+    else:
+        df_aus = df_ausgaben
+
+    df_filtered = df_aus[df_aus.year == selected_year]
     traces = []
     for canton in cantons:
         df_canton = df_filtered[df_filtered['canton'] == canton]
 
-        if inflation_cleaned:
-            df_canton[x_axis] = df_canton.apply(lambda x: inflation_correction(x[y_axis], x['year']), axis=1)
-            df_canton[y_axis] = df_canton.apply(lambda x: inflation_correction(x[y_axis], x['year']), axis=1)
-
-
         if normalize == ['normalized']:
 
             x_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[x_axis],
-                                       df_ausgaben, x_axis, canton,
+                                       df_aus, x_axis, canton,
                                        None)
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
-                                       df_ausgaben, y_axis, canton,
+                                       df_aus, y_axis, canton,
                                        None)
             # x_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, x_axis, canton)
             # y_vals = min_max_normalization_one_canton_all_cat(df_canton, df_ausgaben, y_axis, canton)
@@ -190,7 +192,7 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, inflation_cle
             mode='markers',
             opacity=0.7,
             marker={
-                'size': df_canton[bubble_size_dropdown] / df_ausgaben[bubble_size_dropdown].max() * 200,
+                'size': df_canton[bubble_size_dropdown] / df_aus[bubble_size_dropdown].max() * 200,
                 'line': {'width': 0.5, 'color': 'white'}
             },
             name=iso_canton_map[canton]
@@ -203,11 +205,11 @@ def update_bubble(x_axis, y_axis, bubble_size_dropdown, normalize, inflation_cle
         y_range = [-extra_space_graph, 1 + extra_space_graph]
     else:
         x_range = [
-            df_ausgaben[x_axis].min() - extra_space_graph * (df_ausgaben[x_axis].max() - df_ausgaben[x_axis].min()),
-            df_ausgaben[x_axis].max() + extra_space_graph * (df_ausgaben[x_axis].max() - df_ausgaben[x_axis].min())]
+            df_aus[x_axis].min() - extra_space_graph * (df_aus[x_axis].max() - df_aus[x_axis].min()),
+            df_aus[x_axis].max() + extra_space_graph * (df_aus[x_axis].max() - df_aus[x_axis].min())]
         y_range = [
-            df_ausgaben[y_axis].min() - extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min()),
-            df_ausgaben[y_axis].max() + extra_space_graph * (df_ausgaben[y_axis].max() - df_ausgaben[y_axis].min())]
+            df_aus[y_axis].min() - extra_space_graph * (df_aus[y_axis].max() - df_aus[y_axis].min()),
+            df_aus[y_axis].max() + extra_space_graph * (df_aus[y_axis].max() - df_aus[y_axis].min())]
     fig = {
         'data': traces,
         'layout': dict(
@@ -236,15 +238,17 @@ def update_line(y_axis, normalize, inflation_cleaned):
     print('update_line')
 
     traces = []
-    for canton in cantons:
-        df_canton = df_ausgaben[df_ausgaben['canton'] == canton]
+    if inflation_cleaned:
+        df_aus = df_ausgaben_infl
+    else:
+        df_aus = df_ausgaben
 
-        if inflation_cleaned:
-            df_canton[y_axis] = df_canton.apply(lambda x: inflation_correction(x[y_axis], x['year']), axis=1)
+    for canton in cantons:
+        df_canton = df_aus[df_aus['canton'] == canton]
 
         if normalize == ['normalized']:
             y_vals = min_max_normalize('one_canton_one_cat_all_years', df_canton[y_axis],
-                                       df_ausgaben, y_axis, canton,
+                                       df_aus, y_axis, canton,
                                        None)
         else:
             y_vals = df_canton[y_axis]
@@ -260,16 +264,13 @@ def update_line(y_axis, normalize, inflation_cleaned):
             },
             name=iso_canton_map[canton]
         ))
-    if normalize == ['normalized']:
-        y_range = [0, 1]
-    else:
-        y_range = [df_ausgaben[y_axis].min(), df_ausgaben[y_axis].max()]
+
     fig = {
         'data': traces,
         'layout': dict(
             xaxis={'fixedrange': True},
             yaxis={'title': {'text': funkt_id_map[y_axis], 'font': {'size': 16}},
-                   'range': y_range, 'fixedrange': True},
+                   'fixedrange': True},
             margin={'l': 60, 'b': 200, 't': 10, 'r': 20},
             legend={'y': 0, 'orientation': 'h', 'yanchor': 'top', 'borderwidth': 35, 'bordercolor': '#00000000',
                     'font': {'size': 13}},
@@ -319,8 +320,8 @@ def update_map(category, year, normalization, inflation_cleaned):
         display_value_absolute = df_canton[category].values[0]
 
         if inflation_cleaned:
-            df_canton[display_value_absolute] = df_canton.apply(lambda x: inflation_correction(x[display_value_absolute], x['year']), axis=1)
-
+            df_canton[display_value_absolute] = df_canton.apply(
+                lambda x: inflation_correction(x[display_value_absolute], x['year']), axis=1)
 
         if normalization == 'per_canton':
             display_value_normalized_scaled = min_max_normalize('one_canton_one_cat_all_years', display_value_absolute,

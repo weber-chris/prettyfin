@@ -26,7 +26,7 @@ def get_map_tab_layout(funkt_id_map, disabled_cat_ausgaben):
                           id='inflation-checkbox-map',
                           options=[
                               {'label': 'Correct for inflation', 'value': 'inflation_corrected'}
-                          ], value=[]
+                          ], value=[], style={'margin-right':'15px'}
                       ),
                           dcc.Dropdown(
                           id='map-value-dropdown',
