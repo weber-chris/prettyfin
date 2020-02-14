@@ -18,6 +18,14 @@ def get_linegraph_tab_layout(funkt_id_map, disabled_cat_ausgaben):
                     {'label': 'Normalized', 'value': 'normalized'}
                 ],
                 value=[]
-            )], className='normalize_checkbox'), ],
+            )], className='normalize_checkbox'),
+            html.Div([dcc.Checklist(
+                id='inflation-checkbox-line',
+                options=[
+                    {'label': 'Correct for inflation', 'value': 'inflation_corrected'}
+                ],
+                value=[]
+            )], className='inflation_checkbox'),
+            ],
             style={'width': 250, 'flex': '1 0 auto', 'margin': '20px 20px 0px 0px'})],
         style={'display': 'flex', 'flex-wrap': 'wrap', 'width': '98vw'})
