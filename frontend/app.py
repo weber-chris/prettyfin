@@ -1,8 +1,8 @@
 import dash
-import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
+import dash_core_components as dcc
 import plotly.graph_objects as go
 from pathlib import Path
 import os
@@ -43,7 +43,7 @@ init_year = 1991
 cantons = df_ausgaben['canton'].unique()
 cantons.sort()  # needed so that legend is alphabetical
 
-external_stylesheets = [ dbc.themes.BOOTSTRAP,'https://codepen.io/chriddyp/pen/bWLwgP.css']
+external_stylesheets = [dbc.themes.BOOTSTRAP, 'https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 gradient_start_color = [20, 70, 180, 0.7]
 gradient_end_color = [169, 69, 66, 0.9]
@@ -79,14 +79,34 @@ app.layout = html.Div([
             dbc.Button("Help", id="open"),
             dbc.Modal(
                 [
-                    dbc.ModalHeader("Header"),
-                    dbc.ModalBody("Prettyfin"),
+                    dbc.ModalHeader("Prettyfin Background"),
+                    html.Div([
+                        dcc.Markdown('''
+                        ### Background  
+                        Prettyfin aims to visualize the spending of different swiss cantons in relation to each other. 
+                        It is developed by the [aiger](aiger.ch) team as a first website project.  
+                        
+                        Each Tab contains a different kind of graph in which the data can visualized differently. They
+                        all contain a 'year-slider' where the displayed year can be controlled either by hand or automatically.
+                        
+                        #### Bubble Graph 
+                        #### Line Graph 
+                        #### Map  
+                        '''),
+                    ], style={'margin':'10px 10px 10px 10px'}),
+
+                    #dbc.ModalBody("""
+                    #Prettyfin
+                    #"""),
                     dbc.ModalFooter(
                         dbc.Button("Close", id="close", className="ml-auto")
                     ),
                 ],
                 id="modal",
                 centered=True,
+                size='xl',
+                scrollable=True,
+                tag='html'
             ),
         ]
     )], style={'display': 'flex', 'justify-content': 'space-between',
@@ -116,6 +136,8 @@ app.layout = html.Div([
         style={'align-content': 'stretch'}, id='timeline-div'),
     dcc.Interval(id='interval', disabled=True, interval=1200),
 ])
+
+
 @app.callback(
     Output("modal", "is_open"),
     [Input("open", "n_clicks"), Input("close", "n_clicks")],
