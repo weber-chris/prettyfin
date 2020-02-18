@@ -1,6 +1,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objects as go
 from pathlib import Path
@@ -42,7 +43,7 @@ init_year = 1991
 cantons = df_ausgaben['canton'].unique()
 cantons.sort()  # needed so that legend is alphabetical
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+external_stylesheets = [ dbc.themes.BOOTSTRAP,'https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 gradient_start_color = [20, 70, 180, 0.7]
 gradient_end_color = [169, 69, 66, 0.9]
@@ -71,7 +72,26 @@ def year_tick_formater(year_ticks):
 
 
 app.layout = html.Div([
-    html.H1('Prettyfin'),
+    html.Div(
+    [html.H1('Prettyfin'),
+    html.Div(
+        [
+            dbc.Button("Help", id="open"),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader("Header"),
+                    dbc.ModalBody("Prettyfin"),
+                    dbc.ModalFooter(
+                        dbc.Button("Close", id="close", className="ml-auto")
+                    ),
+                ],
+                id="modal",
+                centered=True,
+            ),
+        ]
+    )], style={'display': 'flex', 'justify-content': 'space-between',
+               'align-items': 'center', 'margin': '0px 10px 0px 0px'})
+    ,
     dcc.Tabs(id="tabs", value='tab-map', children=[
         dcc.Tab(label='Bubble Graph', value='tab-graph'),
         dcc.Tab(label='Line Graph', value='tab-line'),
@@ -96,6 +116,15 @@ app.layout = html.Div([
         style={'align-content': 'stretch'}, id='timeline-div'),
     dcc.Interval(id='interval', disabled=True, interval=1200),
 ])
+@app.callback(
+    Output("modal", "is_open"),
+    [Input("open", "n_clicks"), Input("close", "n_clicks")],
+    [State("modal", "is_open")],
+)
+def toggle_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
 
 
 @app.callback([Output('tabs-content', 'children'), Output('timeline-div', 'style')],
