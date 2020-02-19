@@ -9,9 +9,9 @@ def get_map_tab_layout(funkt_id_map, disabled_cat_ausgaben):
                       html.Div([dcc.RadioItems(
                           id='normalize-radio-map',
                           options=[
-                              {'label': 'Absolute', 'value': 'absolute'},
-                              {'label': 'Per Canton', 'value': 'per_canton'},
-                              {'label': 'Per Year', 'value': 'per_year'}
+                              {'label': ' Absolute', 'value': 'absolute'},
+                              {'label': ' Per Canton', 'value': 'per_canton'},
+                              {'label': ' Per Year', 'value': 'per_year'}
                           ],
                           value='per_canton', labelStyle={'display': 'inline', 'margin': '5px', 'white-space': 'nowrap'}
                       )], className='normalize_radio'),
@@ -25,7 +25,7 @@ def get_map_tab_layout(funkt_id_map, disabled_cat_ausgaben):
                       html.Div([dcc.Checklist(
                           id='inflation-checkbox-map',
                           options=[
-                              {'label': 'Correct for inflation', 'value': 'inflation_corrected'}
+                              {'label': ' Correct for inflation', 'value': 'inflation_corrected'}
                           ], value=[], style={'margin-right':'15px'}
                       ),
                           dcc.Dropdown(

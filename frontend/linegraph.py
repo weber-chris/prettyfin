@@ -15,14 +15,14 @@ def get_linegraph_tab_layout(funkt_id_map, disabled_cat_ausgaben):
             html.Div([dcc.Checklist(
                 id='normalize-checkbox-line',
                 options=[
-                    {'label': 'Normalized', 'value': 'normalized'}
+                    {'label': ' Normalized', 'value': 'normalized'}
                 ],
                 value=[]
             )], className='normalize_checkbox'),
             html.Div([dcc.Checklist(
                 id='inflation-checkbox-line',
                 options=[
-                    {'label': 'Correct for inflation', 'value': 'inflation_corrected'}
+                    {'label': ' Correct for inflation', 'value': 'inflation_corrected'}
                 ],
                 value=[]
             )], className='inflation_checkbox'),

@@ -33,6 +33,8 @@ with open(folder_preprocessed_data / 'canton_borders_xy.json', 'r') as file:
     canton_borders_xy = json.load(file)
 with open(folder_preprocessed_data / 'inflation_rate.json', 'r') as file:
     inflation_rate = json.load(file)
+with open(Path(os.getcwd()) / 'frontend' / 'assets' / 'modal_text.md', 'r') as file:
+    modal_text = file.read()
 disabled_cat_ausgaben = ['03', '08', '13', '18', '26', '27', '28', '38', '48', '58', '64', '68', '76', '78', '86', '88',
                          '91', '92', '93', '94', '95', '97', '99']
 
@@ -73,44 +75,36 @@ def year_tick_formater(year_ticks):
 
 app.layout = html.Div([
     html.Div(
-    [html.H1('Prettyfin'),
-    html.Div(
-        [
-            dbc.Button("Help", id="open"),
-            dbc.Modal(
-                [
-                    dbc.ModalHeader("Prettyfin Background"),
-                    html.Div([
-                        dcc.Markdown('''
-                        ### Background  
-                        Prettyfin aims to visualize the spending of different swiss cantons in relation to each other. 
-                        It is developed by the [aiger](aiger.ch) team as a first website project.  
-                        
-                        Each Tab contains a different kind of graph in which the data can visualized differently. They
-                        all contain a 'year-slider' where the displayed year can be controlled either by hand or automatically.
-                        
-                        #### Bubble Graph 
-                        #### Line Graph 
-                        #### Map  
-                        '''),
-                    ], style={'margin':'10px 10px 10px 10px'}),
+        [html.H1('PrettyFin'),
+         html.Div(
+             [
+                 # [html.Button(html.P('Play', id='start-button-text', style={}), id='start-button')],x
+                 html.Button(html.P('Info'), id='open'),
+                 # dbc.Button("Help", id="open"),
+                 dbc.Modal(
+                     [
+                         # dbc.ModalHeader('Info'),
+                         html.Div([
+                             dcc.Markdown(modal_text),
+                         ], style={'margin': '10px 10px 10px 10px'}),
 
-                    #dbc.ModalBody("""
-                    #Prettyfin
-                    #"""),
-                    dbc.ModalFooter(
-                        dbc.Button("Close", id="close", className="ml-auto")
-                    ),
-                ],
-                id="modal",
-                centered=True,
-                size='xl',
-                scrollable=True,
-                tag='html'
-            ),
-        ]
-    )], style={'display': 'flex', 'justify-content': 'space-between',
-               'align-items': 'center', 'margin': '0px 10px 0px 0px'})
+                         # dbc.ModalBody("""
+                         # Prettyfin
+                         # """),
+                         dbc.ModalFooter(
+                             # dbc.Button("Close", id="close", className="ml-auto")
+                             html.Button(html.P('Close'), id='close', className='ml-auto'),
+                         ),
+                     ],
+                     id="modal",
+                     centered=True,
+                     size='xl',
+                     # scrollable=True,
+                     tag='html'
+                 ),
+             ]
+         )], style={'display': 'flex', 'justify-content': 'space-between',
+                    'align-items': 'center', 'margin': '0px 10px 0px 0px'})
     ,
     dcc.Tabs(id="tabs", value='tab-map', children=[
         dcc.Tab(label='Bubble Graph', value='tab-graph'),
@@ -134,6 +128,9 @@ app.layout = html.Div([
                 step=None
             )], style={'width': '100%', 'margin': '5px 0px 0px 0px'})],
         style={'align-content': 'stretch'}, id='timeline-div'),
+    html.Div([html.P(['Copyright © 2020 by ', html.A('aiger', href='https://www.aiger.ch/')])],
+             style={'text-align': 'center', 'margin-top': '25px'}),
+    # html.Div([html.A('Copyright © 2020 by aiger',href='https://www.aiger.ch/')], style={'text-align': 'center', 'margin-top':'25px'}),
     dcc.Interval(id='interval', disabled=True, interval=1200),
 ])
 

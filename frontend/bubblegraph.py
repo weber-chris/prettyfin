@@ -26,14 +26,14 @@ def get_bubblegraph_tab_layout(funkt_id_map, disabled_cat_ausgaben,
             html.Div([dcc.Checklist(
                 id='normalize-checkbox-bubble',
                 options=[
-                    {'label': 'Normalized', 'value': 'normalized'}
+                    {'label': ' Normalized', 'value': 'normalized'}
                 ],
                 value=[]
             ),], style={}, className='normalize_checkbox'),
             html.Div([dcc.Checklist(
                 id='inflation-checkbox-bubble',
                 options=[
-                    {'label': 'Correct for inflation', 'value': 'inflation_corrected'}
+                    {'label': ' Correct for Inflation', 'value': 'inflation_corrected'}
                 ],
                 value=[]
             )], className='inflation_checkbox'),
